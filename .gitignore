@@ -1,0 +1,41 @@
+
+# ---- Virtual environments ----
+venv/
+.env/
+env/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+
+# ---- Jupyter notebook checkpoints ----
+.ipynb_checkpoints/
+*.ipynb_checkpoints/
+
+# ---- VS Code workspace ----
+.vscode/
+*.code-workspace
+
+# ---- Build / cache ----
+build/
+dist/
+*.egg-info/
+*.egg
+*.log
+*.tmp
+.DS_Store
+
+# ---- Data & Generated Outputs ----
+test_data/
+outputs/
+generated_images/
+*.wav
+*.png
+*.jpg
+
+# ---- System files ----
+Thumbs.db
+ehthumbs.db
+desktop.ini
