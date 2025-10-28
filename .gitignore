@@ -31,6 +31,7 @@ dist/
 test_data/
 outputs/
 generated_images/
+extracted_audiocaps/
 *.wav
 *.png
 *.jpg
