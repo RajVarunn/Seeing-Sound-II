@@ -1,10 +1,9 @@
 """
-Audio → Image Generator (Multi-Task Loss Version)
+Audio → Image Generator (Single-Task Version)
 Key features:
-    - Dual-head MLP: one for CLAP text space, one for SD embedding space
-    - Multi-task training: CLAP alignment loss + SD alignment loss
-    - Both heads are trained simultaneously
-    - to_sd head is properly trained and used during inference
+    - Single-head MLP: CLAP audio → SD embedding space
+    - Direct SD alignment training with MSE loss
+    - Simplified architecture focused on image generation
 """
 
 # ========================
@@ -96,43 +95,25 @@ def collate_audio(batch):
 # ========================
 class AudioProjectionMLP(nn.Module):
     """
-    Dual-head MLP projection:
-    - to_text: CLAP audio → CLAP text space (for CLAP alignment)
-    - to_sd: CLAP audio → SD embedding space (for image generation)
-    Both heads are trained with multi-task loss.
+    Single-head MLP projection:
+    - CLAP audio → SD embedding space (for image generation)
     """
-    def __init__(self, in_dim, text_dim, sd_dim, hidden=1024):
+    def __init__(self, in_dim, sd_dim, hidden=1024):
         super().__init__()
         
-        # Shared backbone
-        self.shared = nn.Sequential(
+        # Single projection to SD space
+        self.projection = nn.Sequential(
             nn.Linear(in_dim, hidden), 
             nn.GELU(), 
             nn.Dropout(0.1),
             nn.Linear(hidden, hidden), 
             nn.GELU(), 
-            nn.Dropout(0.1)
-        )
-        
-        # Head 1: CLAP text space (for training alignment)
-        self.to_text = nn.Sequential(
-            nn.Linear(hidden, hidden),
-            nn.GELU(),
-            nn.Dropout(0.1),
-            nn.Linear(hidden, text_dim)
-        )
-        
-        # Head 2: SD embedding space (for generation)
-        self.to_sd = nn.Sequential(
-            nn.Linear(hidden, hidden),
-            nn.GELU(),
             nn.Dropout(0.1),
             nn.Linear(hidden, sd_dim)
         )
         
     def forward(self, z):
-        shared_features = self.shared(z)
-        return self.to_text(shared_features), self.to_sd(shared_features)
+        return self.projection(z)
 
 
 # ========================
@@ -187,43 +168,20 @@ class Audio2ImageModel(nn.Module):
             
             self.sd_hidden = self.sd_text_encoder.config.hidden_size
 
-        # -------- Get CLAP dims --------
-        dummy_text = ["test"]
+        # -------- Get CLAP audio dims --------
         dummy_audio = [torch.zeros(48000).numpy()]  # 1 second at 48kHz
         
         with torch.no_grad():
-            text_proc = self.proc(text=dummy_text, return_tensors="pt")
-            text_proc = {k: v.to(device) for k,v in text_proc.items()}
-            t = self.clap.get_text_features(**text_proc)
-            clap_text_dim = t.shape[-1]
-            
             audio_proc = self.proc(audio=dummy_audio, sampling_rate=48000, return_tensors="pt")
             audio_proc = {k: v.to(device) for k,v in audio_proc.items()}
             a = self.clap.get_audio_features(**audio_proc)
             clap_audio_dim = a.shape[-1]
 
-        # -------- Trainable Dual-Head MLP --------
-        print(f"Creating MLP: CLAP audio ({clap_audio_dim}) → CLAP text ({clap_text_dim}) & SD ({self.sd_hidden})")
-        self.mapper = AudioProjectionMLP(clap_audio_dim, clap_text_dim, self.sd_hidden)
+        # -------- Trainable Single-Head MLP --------
+        print(f"Creating MLP: CLAP audio ({clap_audio_dim}) → SD ({self.sd_hidden})")
+        self.mapper = AudioProjectionMLP(clap_audio_dim, self.sd_hidden)
 
     # --- Encoders ---
-    def encode_text_clap(self, caps):
-        """Encode text using CLAP text encoder"""
-        proc = self.proc(text=caps, return_tensors="pt", padding=True)
-        proc = {k: v.to(self.cfg.device) for k,v in proc.items()}
-        
-        # Ensure CLAP is in eval mode
-        was_training = self.clap.training
-        self.clap.eval()
-        
-        with torch.no_grad():
-            e = self.clap.get_text_features(**proc)
-        
-        # Restore training state if needed
-        if was_training:
-            self.clap.train()
-            
-        return F.normalize(e, dim=-1)
     
     def encode_text_sd(self, caps):
         """Encode text using SD text encoder (for target embeddings)"""
@@ -277,42 +235,26 @@ class Audio2ImageModel(nn.Module):
         tgt = torch.arange(a.size(0), device=a.device)
         return 0.5 * (F.cross_entropy(logits, tgt) + F.cross_entropy(logits.t(), tgt))
 
-    # --- Forward (Training with Multi-Task Loss) ---
+    # --- Forward (Training with SD Loss Only) ---
     def forward(self, wavs, sr, caps):
         # Get target embeddings
-        clap_text_emb = self.encode_text_clap(caps)  # CLAP text embeddings
         sd_text_emb = self.encode_text_sd(caps)      # SD text embeddings
         
         # Get audio embeddings
         audio_emb = self.encode_audio(wavs, sr)
         
-        # Project audio to both spaces
-        audio_to_clap, audio_to_sd = self.mapper(audio_emb)
+        # Project audio to SD space
+        audio_to_sd = self.mapper(audio_emb)
         
-        # Loss 1: CLAP alignment (InfoNCE)
-        loss_clap = self.info_nce(audio_to_clap, clap_text_emb, self.cfg.temperature)
-        
-        # Loss 2: SD alignment (MSE in embedding space)
+        # SD alignment loss (MSE in embedding space)
         loss_sd = F.mse_loss(audio_to_sd, sd_text_emb)
         
-        # Combined multi-task loss
-        total_loss = (
-            self.cfg.clap_loss_weight * loss_clap + 
-            self.cfg.sd_loss_weight * loss_sd
-        )
-        
-        # Compute similarities for monitoring
+        # Compute similarity for monitoring
         with torch.no_grad():
-            clap_sim = torch.diagonal(
-                F.normalize(audio_to_clap, dim=-1) @ F.normalize(clap_text_emb, dim=-1).t()
-            ).mean()
-            
             sd_sim = F.cosine_similarity(audio_to_sd, sd_text_emb, dim=-1).mean()
         
-        return total_loss, {
-            "loss_clap": loss_clap.item(),
+        return loss_sd, {
             "loss_sd": loss_sd.item(),
-            "clap_sim": clap_sim.item(),
             "sd_sim": sd_sim.item()
         }
 
@@ -324,7 +266,7 @@ class Audio2ImageModel(nn.Module):
         
         # Get audio embedding and project to SD space
         audio_emb = self.encode_audio([wav], sr)
-        _, soft_token = self.mapper(audio_emb)  # Use to_sd head
+        soft_token = self.mapper(audio_emb)  # Single head output
         
         # Tokenize base prompt
         tok = self.sd_tok(
@@ -381,13 +323,11 @@ def train(cfg: Config):
     )
 
     print(f"\n{'='*60}")
-    print(f"Starting Multi-Task Training")
+    print(f"Starting Single-Task Training (SD Only)")
     print(f"{'='*60}")
     print(f"Dataset: {len(ds)} samples")
     print(f"Batch size: {cfg.batch_size}")
     print(f"Epochs: {cfg.max_epochs}")
-    print(f"CLAP loss weight: {cfg.clap_loss_weight}")
-    print(f"SD loss weight: {cfg.sd_loss_weight}")
     print(f"{'='*60}\n")
     
     for ep in range(1, cfg.max_epochs + 1):
@@ -395,9 +335,6 @@ def train(cfg: Config):
         pbar = tqdm(loader, desc=f"Epoch {ep}/{cfg.max_epochs}")
         
         epoch_loss = 0
-        epoch_clap_loss = 0
-        epoch_sd_loss = 0
-        epoch_clap_sim = 0
         epoch_sd_sim = 0
         
         for wavs, sr, caps in pbar:
@@ -411,32 +348,21 @@ def train(cfg: Config):
             opt.step()
             
             epoch_loss += loss.item()
-            epoch_clap_loss += stats['loss_clap']
-            epoch_sd_loss += stats['loss_sd']
-            epoch_clap_sim += stats['clap_sim']
             epoch_sd_sim += stats['sd_sim']
             
             pbar.set_postfix({
-                "total": f"{loss.item():.3f}",
-                "clap": f"{stats['loss_clap']:.3f}",
-                "sd": f"{stats['loss_sd']:.3f}",
-                "c_sim": f"{stats['clap_sim']:.2f}",
-                "s_sim": f"{stats['sd_sim']:.2f}"
+                "loss": f"{loss.item():.3f}",
+                "sd_sim": f"{stats['sd_sim']:.2f}"
             })
         
         # Compute epoch averages
         n = len(loader)
         avg_loss = epoch_loss / n
-        avg_clap_loss = epoch_clap_loss / n
-        avg_sd_loss = epoch_sd_loss / n
-        avg_clap_sim = epoch_clap_sim / n
         avg_sd_sim = epoch_sd_sim / n
         
         print(f"\n{'='*60}")
         print(f"Epoch {ep} Summary:")
-        print(f"  Total Loss: {avg_loss:.4f}")
-        print(f"  CLAP Loss: {avg_clap_loss:.4f} | CLAP Sim: {avg_clap_sim:.3f}")
-        print(f"  SD Loss: {avg_sd_loss:.4f} | SD Sim: {avg_sd_sim:.3f}")
+        print(f"  SD Loss: {avg_loss:.4f} | SD Sim: {avg_sd_sim:.3f}")
         print(f"{'='*60}\n")
         
         # Save checkpoint
@@ -444,14 +370,7 @@ def train(cfg: Config):
             "mapper": model.mapper.state_dict(),
             "epoch": ep,
             "loss": avg_loss,
-            "clap_loss": avg_clap_loss,
-            "sd_loss": avg_sd_loss,
-            "clap_sim": avg_clap_sim,
-            "sd_sim": avg_sd_sim,
-            "config": {
-                "clap_loss_weight": cfg.clap_loss_weight,
-                "sd_loss_weight": cfg.sd_loss_weight,
-            }
+            "sd_sim": avg_sd_sim
         }
         
         torch.save(checkpoint, cfg.ckpt_path)
@@ -490,7 +409,6 @@ def infer(cfg: Config, wav_path: str, out_path: str):
     
     print(f"Checkpoint info:")
     print(f"  Epoch: {ckpt.get('epoch', 'unknown')}")
-    print(f"  CLAP Sim: {ckpt.get('clap_sim', 'N/A'):.3f}")
     print(f"  SD Sim: {ckpt.get('sd_sim', 'N/A'):.3f}")
     
     # Generate image
