@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>[ AUDIO → IMAGE NEURAL SYNTHESIS ]</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        .orbitron { font-family: 'Orbitron', monospace; }
+        .wb-box { 
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid #000;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .wb-box-light { 
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid #000;
+        }
+        /* Sound Waves Background */
+        .sound-waves {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.2;
+            overflow: hidden;
+        }
+        
+        .wave-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #000, transparent);
+            animation: wave-flow 4s linear infinite;
+        }
+        
+        .wave-bar {
+            position: absolute;
+            width: 3px;
+            background: #000;
+            border-radius: 2px;
+            animation: wave-pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes wave-flow {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
+        @keyframes wave-pulse {
+            0%, 100% { height: 20px; opacity: 0.4; }
+            50% { height: 80px; opacity: 1; }
+        }
+        .pulse-ring {
+            animation: pulse-ring 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 1; }
+            80%, 100% { transform: scale(1.2); opacity: 0; }
+        }
+        .generation-wave {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+        }
+        .wave-bar {
+            width: 4px;
+            background: linear-gradient(to top, #666, #000);
+            border-radius: 2px;
+            animation: wave 1.5s ease-in-out infinite;
+        }
+        .wave-bar:nth-child(1) { height: 20px; animation-delay: 0s; }
+        .wave-bar:nth-child(2) { height: 30px; animation-delay: 0.1s; }
+        .wave-bar:nth-child(3) { height: 40px; animation-delay: 0.2s; }
+        .wave-bar:nth-child(4) { height: 35px; animation-delay: 0.3s; }
+        .wave-bar:nth-child(5) { height: 45px; animation-delay: 0.4s; }
+        .wave-bar:nth-child(6) { height: 25px; animation-delay: 0.5s; }
+        .wave-bar:nth-child(7) { height: 35px; animation-delay: 0.6s; }
+        .wave-bar:nth-child(8) { height: 30px; animation-delay: 0.7s; }
+        @keyframes wave {
+            0%, 100% { transform: scaleY(0.5); opacity: 0.7; }
+            50% { transform: scaleY(1); opacity: 1; }
+        }
+        .model-selector.active {
+            background: rgba(0, 0, 0, 0.05);
+            border-color: #000 !important;
+            border-width: 2px;
+        }
+    </style>
+</head>
+<body class="bg-white text-black min-h-screen">
+    <!-- Sound Waves Background -->
+    <div class="sound-waves">
+        <!-- Flowing wave lines -->
+        <div class="wave-line" style="top: 20%; animation-delay: 0s;"></div>
+        <div class="wave-line" style="top: 40%; animation-delay: 1s;"></div>
+        <div class="wave-line" style="top: 60%; animation-delay: 2s;"></div>
+        <div class="wave-line" style="top: 80%; animation-delay: 3s;"></div>
+        
+        <!-- Flowing wave lines -->
+        <div class="wave-line" style="top: 20%; animation-delay: 0s;"></div>
+        <div class="wave-line" style="top: 40%; animation-delay: 1s;"></div>
+        <div class="wave-line" style="top: 60%; animation-delay: 2s;"></div>
+        <div class="wave-line" style="top: 80%; animation-delay: 3s;"></div>
+    </div>
+    <div class="container mx-auto px-6 py-8 max-w-6xl">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <div class="flex justify-center items-center space-x-4 mb-6">
+                <div class="w-16 h-16 wb-box rounded-full flex items-center justify-center relative">
+                    <div class="absolute inset-0 rounded-full pulse-ring border-2 border-black"></div>
+                    <i class="fas fa-brain text-black text-2xl"></i>
+                </div>
+                <h1 class="text-6xl font-black orbitron text-black">
+                    AUDIO → IMAGE
+                </h1>
+                <div class="w-16 h-16 wb-box rounded-full flex items-center justify-center relative">
+                    <div class="absolute inset-0 rounded-full pulse-ring border-2 border-black" style="animation-delay: 1s;"></div>
+                    <i class="fas fa-image text-black text-2xl"></i>
+                </div>
+            </div>
+            <p class="text-xl text-black orbitron">[ NEURAL SYNTHESIS ENGINE ]</p>
+            <p class="text-sm text-gray-700 mt-2">CLAP + Stable Diffusion Multi-Task Architecture</p>
+        </div>
+
+        <!-- Main Interface -->
+        <div class="max-w-4xl mx-auto">
+            <!-- Audio Input Section -->
+            <div id="inputSection" class="wb-box rounded-lg p-8 mb-8">
+                <div class="flex items-center space-x-3 mb-6">
+                    <div class="w-10 h-10 wb-box rounded-full flex items-center justify-center">
+                        <i class="fas fa-microphone text-black"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold orbitron text-black">[ AUDIO INPUT ]</h2>
+                </div>
+
+                <!-- File Upload -->
+                <div class="mb-6">
+                    <label class="block text-black text-sm mb-3 orbitron">UPLOAD AUDIO FILE</label>
+                    <div class="relative">
+                        <input type="file" id="audioFile" accept="audio/*" class="hidden">
+                        <button onclick="document.getElementById('audioFile').click()" 
+                                class="w-full wb-box-light rounded-lg p-6 border-2 border-dashed border-black hover:border-gray-600 transition-all duration-300 text-center">
+                            <i class="fas fa-cloud-upload-alt text-4xl text-black mb-3"></i>
+                            <p class="text-black orbitron">[ CLICK TO UPLOAD AUDIO ]</p>
+                            <p class="text-xs text-gray-700 mt-2">Supports WAV, MP3, FLAC formats</p>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Model Selection -->
+                <div class="mb-6">
+                    <label class="block text-black text-sm mb-3 orbitron">SELECT MODEL</label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <button onclick="selectModel('unet')" id="modelUnet"
+                                class="wb-box-light rounded-lg p-4 border-2 border-black hover:bg-gray-100 transition-all duration-300 model-selector active">
+                            <div class="text-center">
+                                <i class="fas fa-star text-yellow-600 text-2xl mb-2"></i>
+                                <h3 class="text-sm font-bold orbitron text-black mb-1">UNET MODEL</h3>
+                                <p class="text-xs text-gray-700">Larger Dataset + UNET</p>
+                                <p class="text-xs text-gray-600 mt-1">Best Quality</p>
+                            </div>
+                        </button>
+                        <button onclick="selectModel('no_unet')" id="modelNoUnet"
+                                class="wb-box-light rounded-lg p-4 border-2 border-gray-300 hover:bg-gray-100 transition-all duration-300 model-selector">
+                            <div class="text-center">
+                                <i class="fas fa-bolt text-blue-600 text-2xl mb-2"></i>
+                                <h3 class="text-sm font-bold orbitron text-black mb-1">NO UNET</h3>
+                                <p class="text-xs text-gray-700">Different Dataset</p>
+                                <p class="text-xs text-gray-600 mt-1">Faster</p>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Audio Preview -->
+                <div id="audioPreview" class="hidden mb-6">
+                    <div class="wb-box-light rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-sm text-black orbitron">[ AUDIO PREVIEW ]</span>
+                            <span id="audioInfo" class="text-xs text-gray-700"></span>
+                        </div>
+                        <audio id="audioPlayer" controls class="w-full">
+                            <source id="audioSource" src="" type="audio/mpeg">
+                        </audio>
+                    </div>
+                </div>
+
+                <!-- Generate Button -->
+                <button id="generateBtn" onclick="generateImage()" 
+                        class="w-full wb-box py-4 rounded-lg text-black font-bold orbitron text-lg hover:bg-gray-100 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fas fa-magic mr-3"></i>
+                    [ GENERATE IMAGE ]
+                </button>
+            </div>
+
+            <!-- Loading Animation -->
+            <div id="loading" class="wb-box rounded-lg p-12 text-center hidden">
+                <div class="relative inline-block mb-8">
+                    <div class="w-24 h-24 border-4 border-gray-700 border-t-white rounded-full animate-spin"></div>
+                    <div class="absolute inset-0 w-24 h-24 border-4 border-transparent border-r-gray-400 rounded-full animate-spin" style="animation-direction: reverse; animation-duration: 0.8s;"></div>
+                </div>
+                <h3 class="text-3xl font-bold text-black orbitron mb-4">[ NEURAL SYNTHESIS IN PROGRESS ]</h3>
+                <p class="text-black mb-6">Processing audio through CLAP → Stable Diffusion pipeline...</p>
+                <div class="generation-wave">
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                </div>
+                <p class="text-xs text-gray-700 mt-4">This may take 30-60 seconds depending on your hardware</p>
+            </div>
+
+            <!-- Results -->
+            <div id="results" class="hidden">
+                <div class="wb-box rounded-lg p-8">
+                    <div class="flex items-center space-x-3 mb-6">
+                        <div class="w-10 h-10 wb-box rounded-full flex items-center justify-center">
+                            <i class="fas fa-image text-black"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold orbitron text-black">[ GENERATED IMAGE ]</h2>
+                    </div>
+                    
+                    <!-- Generated Image -->
+                    <div class="text-center mb-6">
+                        <div class="wb-box-light rounded-lg p-4 inline-block">
+                            <img id="generatedImage" src="" alt="Generated Image" class="max-w-full h-auto rounded">
+                        </div>
+                    </div>
+                    
+                    <!-- Generation Info -->
+                    <div class="text-center mb-6">
+                        <div class="wb-box-light rounded-lg p-4 inline-block">
+                            <div class="text-2xl font-bold text-black orbitron" id="generationTime">--</div>
+                            <div class="text-xs text-black">GENERATION TIME</div>
+                        </div>
+                        <div class="wb-box-light rounded-lg p-4 inline-block ml-4">
+                            <div class="text-sm font-bold text-black orbitron" id="modelUsed">--</div>
+                            <div class="text-xs text-black">MODEL USED</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <button onclick="downloadImage()" 
+                                class="flex-1 wb-box py-3 rounded-lg text-black orbitron hover:bg-gray-100 transition-all duration-300">
+                            <i class="fas fa-download mr-2"></i>
+                            [ DOWNLOAD IMAGE ]
+                        </button>
+                        <button onclick="resetApp()" 
+                                class="flex-1 wb-box py-3 rounded-lg text-black orbitron transition-all duration-300">
+                            <i class="fas fa-redo mr-2"></i>
+                            [ GENERATE ANOTHER ]
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-16 text-black">
+            <p class="text-lg orbitron text-black">[ POWERED BY CLAP + STABLE DIFFUSION ]</p>
+            <div class="flex justify-center space-x-2 mt-4">
+                <div class="w-2 h-2 bg-black rounded-full animate-pulse"></div>
+                <div class="w-2 h-2 bg-black rounded-full animate-pulse" style="animation-delay: 0.2s;"></div>
+                <div class="w-2 h-2 bg-black rounded-full animate-pulse" style="animation-delay: 0.4s;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentAudioFile = null;
+        let generationStartTime = null;
+        let selectedModel = 'unet'; // Default model
+
+        // DOM Elements
+        const audioFile = document.getElementById('audioFile');
+        const audioPreview = document.getElementById('audioPreview');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const audioSource = document.getElementById('audioSource');
+        const audioInfo = document.getElementById('audioInfo');
+        const generateBtn = document.getElementById('generateBtn');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const inputSection = document.getElementById('inputSection');
+
+        // Model selection handler
+        function selectModel(modelType) {
+            selectedModel = modelType;
+            
+            // Update UI
+            document.querySelectorAll('.model-selector').forEach(btn => {
+                btn.classList.remove('active');
+                btn.style.borderColor = '#d1d5db';
+            });
+            
+            const selectedBtn = document.getElementById(modelType === 'unet' ? 'modelUnet' : 'modelNoUnet');
+            selectedBtn.classList.add('active');
+            
+            console.log('Model selected:', modelType);
+        }
+
+        // File upload handler
+        audioFile.addEventListener('change', function(e) {
+            if (e.target.files[0]) {
+                currentAudioFile = e.target.files[0];
+                showAudioPreview(URL.createObjectURL(e.target.files[0]));
+                generateBtn.disabled = false;
+            }
+        });
+
+        function showAudioPreview(url) {
+            audioSource.src = url;
+            audioPlayer.load();
+            audioInfo.textContent = `${currentAudioFile.name} (${(currentAudioFile.size / 1024 / 1024).toFixed(2)} MB)`;
+            audioPreview.classList.remove('hidden');
+        }
+
+        function generateImage() {
+            if (!currentAudioFile) {
+                alert('[ ERROR: Please upload an audio file first ]');
+                return;
+            }
+
+            // Show loading
+            generationStartTime = Date.now();
+            inputSection.classList.add('hidden');
+            results.classList.add('hidden');
+            loading.classList.remove('hidden');
+
+            // Prepare form data
+            const formData = new FormData();
+            formData.append('audio', currentAudioFile);
+            formData.append('model_type', selectedModel);
+
+            // Make request to backend
+            fetch('/generate_image', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                loading.classList.add('hidden');
+                if (data.error) {
+                    alert('[ GENERATION ERROR: ' + data.error + ' ]');
+                    inputSection.classList.remove('hidden');
+                } else {
+                    showResults(data);
+                }
+            })
+            .catch(error => {
+                loading.classList.add('hidden');
+                alert('[ NETWORK ERROR: ' + error.message + ' ]');
+                inputSection.classList.remove('hidden');
+            });
+        }
+
+        function showResults(data) {
+            // Display generated image
+            document.getElementById('generatedImage').src = data.image_url;
+            
+            // Show generation stats
+            const generationTime = ((Date.now() - generationStartTime) / 1000).toFixed(1);
+            document.getElementById('generationTime').textContent = generationTime + 's';
+            document.getElementById('modelUsed').textContent = data.model_used || selectedModel.toUpperCase();
+            
+            results.classList.remove('hidden');
+        }
+
+        function downloadImage() {
+            const img = document.getElementById('generatedImage');
+            const link = document.createElement('a');
+            link.download = `audio2image_${selectedModel}_${Date.now()}.png`;
+            link.href = img.src;
+            link.click();
+        }
+
+        function resetApp() {
+            // Reset form
+            currentAudioFile = null;
+            audioFile.value = '';
+            audioPreview.classList.add('hidden');
+            generateBtn.disabled = true;
+            
+            // Show input section
+            results.classList.add('hidden');
+            loading.classList.add('hidden');
+            inputSection.classList.remove('hidden');
+        }
+
+        // Initialize
+        generateBtn.disabled = true;
+    </script>
+</body>
+</html>

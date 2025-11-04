@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DEEPFAKE DETECTOR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+        
+        * { font-family: 'Rajdhani', sans-serif; }
+        .orbitron { font-family: 'Orbitron', monospace; }
+        
+        body {
+            background: #000000;
+            overflow-x: hidden;
+        }
+        
+        /* Large Audio Waveform Background */
+        .waveform-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        } 
+        
+        .wave-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .wave-bar-bg {
+            width: 8px;
+            background: linear-gradient(to top, #ffffff, #cccccc);
+            border-radius: 4px;
+            animation: wave-bg 2s ease-in-out infinite;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+        
+        @keyframes wave-bg {
+            0%, 100% { height: 20px; opacity: 0.3; }
+            50% { height: 200px; opacity: 0.8; }
+        }
+        
+        /* Moving Soundwaves */
+        .soundwave-lines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.3;
+        }
+        
+        .wave-line {
+            position: absolute;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, #ffffff, transparent);
+            animation: wave-move 6s linear infinite;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        .wave-line-reverse {
+            position: absolute;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #dddddd, transparent);
+            animation: wave-move-reverse 8s linear infinite;
+            box-shadow: 0 0 8px rgba(221, 221, 221, 0.4);
+        }
+        
+        .wave-line-vertical {
+            position: absolute;
+            height: 100%;
+            width: 3px;
+            background: linear-gradient(0deg, transparent, #ffffff, transparent);
+            animation: wave-move-vertical 10s linear infinite;
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+        }
+        
+        .wave-line-diagonal {
+            position: absolute;
+            width: 150%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #bbbbbb, transparent);
+            transform-origin: left center;
+            animation: wave-move-diagonal 12s linear infinite;
+            box-shadow: 0 0 6px rgba(187, 187, 187, 0.3);
+        }
+        
+        @keyframes wave-move {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
+        @keyframes wave-move-reverse {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        
+        @keyframes wave-move-vertical {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+        
+        @keyframes wave-move-diagonal {
+            0% { transform: rotate(45deg) translateX(-100%); }
+            100% { transform: rotate(45deg) translateX(100%); }
+        }
+        
+        /* Glitch Effects */
+        .glitch {
+            position: relative;
+            color: #ffffff;
+            animation: glitch 3s infinite;
+        }
+        
+        .glitch::before,
+        .glitch::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .glitch::before {
+            animation: glitch-1 0.8s infinite;
+            color: #888888;
+            z-index: -1;
+        }
+        
+        .glitch::after {
+            animation: glitch-2 0.8s infinite;
+            color: #444444;
+            z-index: -2;
+        }
+        
+        @keyframes glitch {
+            0%, 100% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+        }
+        
+        @keyframes glitch-1 {
+            0%, 100% { transform: translate(0); }
+            10% { transform: translate(-2px, -2px); }
+            20% { transform: translate(2px, 2px); }
+        }
+        
+        @keyframes glitch-2 {
+            0%, 100% { transform: translate(0); }
+            30% { transform: translate(2px, -2px); }
+            60% { transform: translate(-2px, 2px); }
+        }
+        
+        /* Black and White Theme */
+        .bw-box {
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .bw-box-dark {
+            border: 2px solid #888888;
+            box-shadow: 0 0 15px rgba(136, 136, 136, 0.2);
+            background: rgba(0, 0, 0, 0.8);
+        }
+        
+        /* Spectrogram Animation */
+        .spectrogram {
+            display: flex;
+            align-items: end;
+            justify-content: center;
+            gap: 3px;
+            height: 80px;
+        }
+        
+        .spec-bar {
+            width: 4px;
+            background: linear-gradient(to top, #ffffff, #cccccc);
+            border-radius: 2px;
+            animation: spectrum 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes spectrum {
+            0%, 100% { height: 15px; opacity: 0.4; }
+            50% { height: 70px; opacity: 1; }
+        }
+        
+        /* Pulse Animation */
+        /*.pulse-white {
+            animation: pulse-white 2s ease-in-out infinite;
+        }
+        */
+        
+        @keyframes pulse-white {
+            0%, 100% { box-shadow: 0 0 10px rgba(255, 255, 255, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(255, 255, 255, 0.8), 0 0 40px rgba(255, 255, 255, 0.6); }
+        }
+        
+        /* Scan Lines */
+        .scan-lines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(255, 255, 255, 0.02) 2px,
+                rgba(255, 255, 255, 0.02) 4px
+            );
+            animation: scan 0.1s linear infinite;
+        }
+        
+        @keyframes scan {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(4px); }
+        }
+    </style>
+</head>
+<body class="bg-black text-white min-h-screen">
+    <!-- Large Audio Waveform Background -->
+    <div class="waveform-bg">
+        <div class="wave-container">
+            <div class="wave-bar-bg" style="animation-delay: 0s;"></div>
+            <div class="wave-bar-bg" style="animation-delay: 0.1s;"></div>
+            <div class="wave-bar-bg" style="animation-delay: 0.2s;"></div>
+            <div class="wave-bar-bg" style="animation-delay: 0.3s;"></div>
+            <div class="wave-bar-bg" style="animation-delay: 0.4s;"></div>
+            <div class="wave-bar-bg" style="animation-delay: 0.5s;"></div>
+            <div class="wave-bar-bg" style="animation-delay: 0.6s;"></div>
+            <div class="wave-bar-bg" style="animation-delay: 0.7s;"></div>
+            <div class="wave-bar-bg" style="animation-delay: 0.8s;"></div>
+            <div class="wave-bar-bg" style="animation-delay: 0.9s;"></div>
+            <div class="wave-bar-bg" style="animation-delay: 1.0s;"></div>
+            <div class="wave-bar-bg" style="animation-delay: 1.1s;"></div>
+            <div class="wave-bar-bg" style="animation-delay: 1.2s;"></div>
+            <div class="wave-bar-bg" style="animation-delay: 1.3s;"></div>
+            <div class="wave-bar-bg" style="animation-delay: 1.4s;"></div>
+            <div class="wave-bar-bg" style="animation-delay: 1.5s;"></div>
+            <div class="wave-bar-bg" style="animation-delay: 1.6s;"></div>
+            <div class="wave-bar-bg" style="animation-delay: 1.7s;"></div>
+            <div class="wave-bar-bg" style="animation-delay: 1.8s;"></div>
+            <div class="wave-bar-bg" style="animation-delay: 1.9s;"></div>
+        </div>
+    </div>
+    
+    <!-- Moving Soundwave Lines -->
+    <div class="soundwave-lines">
+        <!-- Horizontal waves left to right -->
+        <div class="wave-line" style="top: 10%; animation-delay: 0s;"></div>
+        <div class="wave-line" style="top: 20%; animation-delay: 1s;"></div>
+        <div class="wave-line" style="top: 30%; animation-delay: 2s;"></div>
+        <div class="wave-line" style="top: 40%; animation-delay: 3s;"></div>
+        <div class="wave-line" style="top: 50%; animation-delay: 4s;"></div>
+        <div class="wave-line" style="top: 60%; animation-delay: 5s;"></div>
+        <div class="wave-line" style="top: 70%; animation-delay: 1.5s;"></div>
+        <div class="wave-line" style="top: 80%; animation-delay: 2.5s;"></div>
+        <div class="wave-line" style="top: 90%; animation-delay: 3.5s;"></div>
+        
+        <!-- Horizontal waves right to left -->
+        <div class="wave-line-reverse" style="top: 15%; animation-delay: 0.5s;"></div>
+        <div class="wave-line-reverse" style="top: 25%; animation-delay: 1.5s;"></div>
+        <div class="wave-line-reverse" style="top: 35%; animation-delay: 2.5s;"></div>
+        <div class="wave-line-reverse" style="top: 45%; animation-delay: 3.5s;"></div>
+        <div class="wave-line-reverse" style="top: 55%; animation-delay: 4.5s;"></div>
+        <div class="wave-line-reverse" style="top: 65%; animation-delay: 0.8s;"></div>
+        <div class="wave-line-reverse" style="top: 75%; animation-delay: 1.8s;"></div>
+        <div class="wave-line-reverse" style="top: 85%; animation-delay: 2.8s;"></div>
+        
+        <!-- Vertical waves -->
+        <div class="wave-line-vertical" style="left: 10%; animation-delay: 0s;"></div>
+        <div class="wave-line-vertical" style="left: 20%; animation-delay: 2s;"></div>
+        <div class="wave-line-vertical" style="left: 30%; animation-delay: 4s;"></div>
+        <div class="wave-line-vertical" style="left: 40%; animation-delay: 6s;"></div>
+        <div class="wave-line-vertical" style="left: 50%; animation-delay: 8s;"></div>
+        <div class="wave-line-vertical" style="left: 60%; animation-delay: 1s;"></div>
+        <div class="wave-line-vertical" style="left: 70%; animation-delay: 3s;"></div>
+        <div class="wave-line-vertical" style="left: 80%; animation-delay: 5s;"></div>
+        <div class="wave-line-vertical" style="left: 90%; animation-delay: 7s;"></div>
+        
+        <!-- Diagonal waves -->
+        <div class="wave-line-diagonal" style="top: 20%; left: -25%; animation-delay: 0s;"></div>
+        <div class="wave-line-diagonal" style="top: 40%; left: -25%; animation-delay: 3s;"></div>
+        <div class="wave-line-diagonal" style="top: 60%; left: -25%; animation-delay: 6s;"></div>
+        <div class="wave-line-diagonal" style="top: 80%; left: -25%; animation-delay: 9s;"></div>
+        <div class="wave-line-diagonal" style="top: 30%; left: -25%; animation-delay: 1.5s;"></div>
+        <div class="wave-line-diagonal" style="top: 50%; left: -25%; animation-delay: 4.5s;"></div>
+        <div class="wave-line-diagonal" style="top: 70%; left: -25%; animation-delay: 7.5s;"></div>
+    </div>
+    
+    <!-- Scan Lines -->
+    <div class="scan-lines"></div>
+
+    <div class="container mx-auto px-4 py-8 relative z-10">
+        <!-- Header -->
+        <div class="text-center mb-16">
+            <div class="mb-8">
+                <h1 class="glitch orbitron text-8xl font-black mb-4 tracking-wider" data-text="DEEPFAKE">
+                    DEEPFAKE
+                </h1>
+                <h2 class="text-gray-300 orbitron text-5xl font-bold tracking-widest">
+                    DETECTOR
+                </h2>
+                <div class="flex justify-center mt-8">
+                    <div class="spectrogram">
+                        <div class="spec-bar" style="animation-delay: 0s;"></div>
+                        <div class="spec-bar" style="animation-delay: 0.1s;"></div>
+                        <div class="spec-bar" style="animation-delay: 0.2s;"></div>
+                        <div class="spec-bar" style="animation-delay: 0.3s;"></div>
+                        <div class="spec-bar" style="animation-delay: 0.4s;"></div>
+                        <div class="spec-bar" style="animation-delay: 0.5s;"></div>
+                        <div class="spec-bar" style="animation-delay: 0.6s;"></div>
+                        <div class="spec-bar" style="animation-delay: 0.7s;"></div>
+                        <div class="spec-bar" style="animation-delay: 0.8s;"></div>
+                        <div class="spec-bar" style="animation-delay: 0.9s;"></div>
+                        <div class="spec-bar" style="animation-delay: 1.0s;"></div>
+                        <div class="spec-bar" style="animation-delay: 1.1s;"></div>
+                        <div class="spec-bar" style="animation-delay: 1.2s;"></div>
+                        <div class="spec-bar" style="animation-delay: 1.3s;"></div>
+                        <div class="spec-bar" style="animation-delay: 1.4s;"></div>
+                    </div>
+                </div>
+                <p class="text-xl text-gray-400 max-w-3xl mx-auto mt-8 leading-relaxed">
+                    [ NEURAL NETWORK POWERED AUDIO AUTHENTICITY VERIFICATION ]
+                </p>
+            </div>
+        </div>
+
+        <!-- Main Interface -->
+        <div class="max-w-6xl mx-auto">
+            <!-- Upload/Record Section -->
+            <div class="bw-box rounded-lg p-8 mb-8">
+                <div class="grid md:grid-cols-3 gap-8">
+                    <!-- Single File Upload -->
+                    <div class="space-y-6">
+                        <div class="flex items-center space-x-3 mb-6">
+                            <div class="w-12 h-12 bw-box rounded-full flex items-center justify-center pulse-white">
+                                <i class="fas fa-upload text-white text-xl"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-white orbitron">SINGLE FILE</h2>
+                        </div>
+                        
+                        <div class="relative">
+                            <input type="file" id="audioFile" accept="audio/*" class="hidden">
+                            <label for="audioFile" class="block cursor-pointer">
+                                <div class="border-2 border-dashed border-gray-500 rounded-lg p-6 text-center hover:border-white transition-all duration-300 bg-black/50">
+                                    <div class="text-4xl mb-3 text-gray-300">🎵</div>
+                                    <p class="text-white font-semibold text-sm mb-1">[ DRAG FILE HERE ]</p>
+                                    <p class="text-gray-400 text-xs">or click to browse</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Batch Upload -->
+                    <div class="space-y-6">
+                        <div class="flex items-center space-x-3 mb-6">
+                            <div class="w-12 h-12 bw-box-dark rounded-full flex items-center justify-center pulse-white">
+                                <i class="fas fa-layer-group text-gray-300 text-xl"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-300 orbitron">BATCH FILES</h2>
+                        </div>
+                        
+                        <div class="relative">
+                            <input type="file" id="batchFiles" accept="audio/*" multiple class="hidden">
+                            <label for="batchFiles" class="block cursor-pointer">
+                                <div class="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center hover:border-gray-400 transition-all duration-300 bg-black/50">
+                                    <div class="text-4xl mb-3 text-gray-400">📁</div>
+                                    <p class="text-gray-300 font-semibold text-sm mb-1">[ MULTIPLE FILES ]</p>
+                                    <p class="text-gray-500 text-xs">select multiple files</p>
+                                </div>
+                            </label>
+                        </div>
+                        
+                        <button id="batchAnalyzeBtn" class="w-full bw-box-dark px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-all duration-300 orbitron text-sm hidden">
+                            <i class="fas fa-search mr-2"></i>
+                            [ ANALYZE BATCH ]
+                        </button>
+                    </div>
+
+                    <!-- Voice Recording -->
+                    <div class="space-y-6">
+                        <div class="flex items-center space-x-3 mb-6">
+                            <div class="w-12 h-12 bw-box-dark rounded-full flex items-center justify-center pulse-white">
+                                <i class="fas fa-microphone text-gray-300 text-xl"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-300 orbitron">RECORD VOICE</h2>
+                        </div>
+                        
+                        <div class="text-center">
+                            <button id="recordBtn" class="relative w-32 h-32 bw-box-dark rounded-full flex items-center justify-center text-gray-300 text-3xl hover:scale-110 transition-all duration-300 pulse-white mb-6 mx-auto">
+                                <i id="recordIcon" class="fas fa-microphone"></i>
+                            </button>
+                            <p id="recordStatus" class="text-gray-400 font-medium orbitron">[ CLICK TO INITIALIZE RECORDING ]</p>
+                            <div id="recordingWave" class="spectrogram mt-4 hidden justify-center">
+                                <div class="spec-bar" style="background: linear-gradient(to top, #888888, #ffffff);"></div>
+                                <div class="spec-bar" style="background: linear-gradient(to top, #888888, #ffffff);"></div>
+                                <div class="spec-bar" style="background: linear-gradient(to top, #888888, #ffffff);"></div>
+                                <div class="spec-bar" style="background: linear-gradient(to top, #888888, #ffffff);"></div>
+                                <div class="spec-bar" style="background: linear-gradient(to top, #888888, #ffffff);"></div>
+                                <div class="spec-bar" style="background: linear-gradient(to top, #888888, #ffffff);"></div>
+                                <div class="spec-bar" style="background: linear-gradient(to top, #888888, #ffffff);"></div>
+                                <div class="spec-bar" style="background: linear-gradient(to top, #888888, #ffffff);"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Audio Preview -->
+            <div id="audioPreview" class="bw-box rounded-lg p-8 mb-8 hidden">
+                <div class="flex items-center space-x-3 mb-6">
+                    <div class="w-12 h-12 bw-box rounded-full flex items-center justify-center pulse-white">
+                        <i class="fas fa-play text-white text-xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-white orbitron">AUDIO PREVIEW</h2>
+                </div>
+                
+                <div class="bw-box-dark rounded-lg p-6 mb-6">
+                    <audio id="audioPlayer" controls class="w-full mb-6" style="filter: invert(1) brightness(0.8);">
+                        Your browser does not support the audio element.
+                    </audio>
+                    
+                    <div class="text-center">
+                        <button id="analyzeBtn" class="bw-box px-12 py-4 rounded-lg text-white orbitron font-bold text-lg hover:scale-105 transition-all duration-300 pulse-white">
+                            <i class="fas fa-search mr-2"></i>
+                            [ INITIATE ANALYSIS ]
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Animation -->
+            <div id="loading" class="bw-box rounded-lg p-12 text-center hidden">
+                <div class="relative inline-block mb-8">
+                    <div class="w-24 h-24 border-4 border-gray-700 border-t-white rounded-full animate-spin"></div>
+                    <div class="absolute inset-0 w-24 h-24 border-4 border-transparent border-r-gray-400 rounded-full animate-spin" style="animation-direction: reverse; animation-duration: 0.8s;"></div>
+                </div>
+                <h3 class="text-3xl font-bold text-white orbitron mb-4">[ ANALYZING AUDIO PATTERNS ]</h3>
+                <p class="text-gray-400 mb-6">Neural network processing spectral features...</p>
+                <div class="flex justify-center">
+                    <div class="spectrogram">
+                        <div class="spec-bar"></div>
+                        <div class="spec-bar"></div>
+                        <div class="spec-bar"></div>
+                        <div class="spec-bar"></div>
+                        <div class="spec-bar"></div>
+                        <div class="spec-bar"></div>
+                        <div class="spec-bar"></div>
+                        <div class="spec-bar"></div>
+                        <div class="spec-bar"></div>
+                        <div class="spec-bar"></div>
+                        <div class="spec-bar"></div>
+                        <div class="spec-bar"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div id="results" class="hidden">
+                <div id="resultCard" class="rounded-lg p-12 text-center">
+                    <div id="resultIcon" class="text-9xl mb-6"></div>
+                    <h3 id="resultLabel" class="text-5xl font-black mb-4 orbitron"></h3>
+                    <p id="resultConfidence" class="text-2xl text-gray-400 mb-8 orbitron"></p>
+                    
+                    <!-- Waveform Display -->
+                    <div id="waveformSection" class="max-w-4xl mx-auto mb-6">
+                        <div class="flex items-center justify-center space-x-3 mb-4">
+                            <div class="w-8 h-8 bw-box rounded-full flex items-center justify-center">
+                                <i class="fas fa-wave-square text-white text-sm"></i>
+                            </div>
+                            <h4 class="text-xl font-bold text-white orbitron">[ AUDIO WAVEFORM ]</h4>
+                        </div>
+                        <div class="bw-box-dark rounded-lg p-4">
+                            <img id="waveformImage" src="" alt="Audio Waveform" class="w-full h-auto rounded">
+                        </div>
+                    </div>
+                    
+                    <!-- Spectrogram Display -->
+                    <div id="spectrogramSection" class="max-w-4xl mx-auto mb-8">
+                        <div class="flex items-center justify-center space-x-3 mb-4">
+                            <div class="w-8 h-8 bw-box rounded-full flex items-center justify-center">
+                                <i class="fas fa-chart-line text-white text-sm"></i>
+                            </div>
+                            <h4 class="text-xl font-bold text-white orbitron">[ MEL SPECTROGRAM ANALYSIS ]</h4>
+                        </div>
+                        <div class="bw-box-dark rounded-lg p-4">
+                            <img id="spectrogramImage" src="" alt="Mel Spectrogram" class="w-full h-auto rounded" style="filter: brightness(1.1) contrast(1.2);">
+                        </div>
+                    </div>
+                    
+                    <!-- Confidence Meter -->
+                    <div class="max-w-md mx-auto mb-8">
+                        <div class="flex justify-between text-gray-500 text-sm mb-2 orbitron">
+                            <span>[ 0% ]</span>
+                            <span>CONFIDENCE LEVEL</span>
+                            <span>[ 100% ]</span>
+                        </div>
+                        <div class="w-full bg-gray-800 rounded-full h-4 overflow-hidden border border-gray-600">
+                            <div id="confidenceProgress" class="h-4 rounded-full transition-all duration-2000 ease-out"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <button onclick="resetApp()" class="bw-box px-8 py-3 rounded-lg text-gray-400 hover:text-white transition-all duration-300 orbitron">
+                            <i class="fas fa-redo mr-2"></i>
+                            [ RESET SYSTEM ]
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+
+            
+            <!-- Batch Results -->
+            <div id="batchResults" class="bw-box-dark rounded-lg p-8 mt-8 hidden">
+                <div class="flex items-center space-x-3 mb-6">
+                    <div class="w-12 h-12 bw-box rounded-full flex items-center justify-center">
+                        <i class="fas fa-list text-white text-xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-white orbitron">[ BATCH RESULTS ]</h2>
+                </div>
+                
+                <div id="batchResultsList" class="space-y-3"></div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-16 text-gray-600">
+            <p class="text-lg orbitron">[ POWERED BY NEURAL SPECTRAL ANALYSIS ]</p>
+            <div class="flex justify-center space-x-2 mt-4">
+                <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                <div class="w-2 h-2 bg-white rounded-full animate-pulse" style="animation-delay: 0.2s;"></div>
+                <div class="w-2 h-2 bg-white rounded-full animate-pulse" style="animation-delay: 0.4s;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+        let currentAudioBlob = null;
+        let recordingTimer;
+        let batchFiles = [];
+
+        const recordBtn = document.getElementById('recordBtn');
+        const recordIcon = document.getElementById('recordIcon');
+        const recordStatus = document.getElementById('recordStatus');
+        const recordingWave = document.getElementById('recordingWave');
+        const audioFile = document.getElementById('audioFile');
+        const audioPreview = document.getElementById('audioPreview');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const batchFilesInput = document.getElementById('batchFiles');
+        const batchAnalyzeBtn = document.getElementById('batchAnalyzeBtn');
+        const batchResults = document.getElementById('batchResults');
+
+        // File upload
+        audioFile.addEventListener('change', function(e) {
+            if (e.target.files[0]) {
+                currentAudioBlob = e.target.files[0];
+                showAudioPreview(URL.createObjectURL(e.target.files[0]));
+            }
+        });
+        
+        // Batch file upload
+        batchFilesInput.addEventListener('change', function(e) {
+            const newFiles = Array.from(e.target.files);
+            batchFiles = batchFiles.concat(newFiles);
+            if (batchFiles.length > 0) {
+                batchAnalyzeBtn.classList.remove('hidden');
+                batchAnalyzeBtn.textContent = `[ ANALYZE ${batchFiles.length} FILES ]`;
+            } else {
+                batchAnalyzeBtn.classList.add('hidden');
+            }
+        });
+        
+        // Batch analysis
+        batchAnalyzeBtn.addEventListener('click', function() {
+            if (batchFiles.length === 0) return;
+            
+            const formData = new FormData();
+            batchFiles.forEach(file => {
+                formData.append('audio_files', file);
+            });
+            
+            loading.classList.remove('hidden');
+            batchResults.classList.add('hidden');
+            
+            fetch('/predict_batch', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                loading.classList.add('hidden');
+                if (data.error) {
+                    alert('[ BATCH ERROR: ' + data.error + ' ]');
+                } else {
+                    showBatchResults(data.results);
+                }
+            })
+            .catch(error => {
+                loading.classList.add('hidden');
+                alert('[ NETWORK ERROR: ' + error.message + ' ]');
+            });
+        });
+
+        // Recording functionality
+        recordBtn.addEventListener('click', async function() {
+            if (!isRecording) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+
+                    mediaRecorder.ondataavailable = function(event) {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = function() {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        currentAudioBlob = audioBlob;
+                        showAudioPreview(URL.createObjectURL(audioBlob));
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+
+                    mediaRecorder.start();
+                    startRecording();
+
+                    recordingTimer = setTimeout(() => {
+                        if (isRecording) {
+                            stopRecording();
+                        }
+                    }, 10000);
+
+                } catch (err) {
+                    alert('[ ERROR: MICROPHONE ACCESS DENIED ]');
+                }
+            } else {
+                stopRecording();
+            }
+        });
+
+        function startRecording() {
+            isRecording = true;
+            recordIcon.className = 'fas fa-stop';
+            recordStatus.textContent = '[ RECORDING ACTIVE - CLICK TO TERMINATE ]';
+            recordingWave.classList.remove('hidden');
+            recordingWave.classList.add('flex');
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                recordIcon.className = 'fas fa-microphone';
+                recordStatus.textContent = '[ CLICK TO INITIALIZE RECORDING ]';
+                recordingWave.classList.add('hidden');
+                recordingWave.classList.remove('flex');
+                if (recordingTimer) {
+                    clearTimeout(recordingTimer);
+                }
+            }
+        }
+
+        function showAudioPreview(audioUrl) {
+            audioPlayer.src = audioUrl;
+            audioPreview.classList.remove('hidden');
+            results.classList.add('hidden');
+            audioPreview.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // Analysis functionality
+        analyzeBtn.addEventListener('click', function() {
+            if (!currentAudioBlob) {
+                alert('[ ERROR: NO AUDIO DATA DETECTED ]');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('audio', currentAudioBlob, 'audio.wav');
+
+            loading.classList.remove('hidden');
+            audioPreview.classList.add('hidden');
+            loading.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // First get prediction (fast)
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                loading.classList.add('hidden');
+                if (data.error) {
+                    alert('[ SYSTEM ERROR: ' + data.error + ' ]');
+                } else {
+                    showResults(data);
+                    // Then get visualizations
+                    return fetch('/visualize', {
+                        method: 'POST',
+                        body: formData
+                    });
+                }
+            })
+            .then(response => response ? response.json() : null)
+            .then(visualData => {
+                if (visualData && !visualData.error) {
+                    updateVisualizations(visualData);
+                }
+            })
+            .catch(error => {
+                loading.classList.add('hidden');
+                alert('[ NETWORK ERROR: ' + error.message + ' ]');
+            });
+        });
+
+        function showResults(data) {
+            const resultCard = document.getElementById('resultCard');
+            const resultIcon = document.getElementById('resultIcon');
+            const resultLabel = document.getElementById('resultLabel');
+            const resultConfidence = document.getElementById('resultConfidence');
+            const confidenceProgress = document.getElementById('confidenceProgress');
+            const spectrogramImage = document.getElementById('spectrogramImage');
+            const waveformImage = document.getElementById('waveformImage');
+
+            const confidenceNum = parseFloat(data.confidence.replace('%', ''));
+
+            // Visualizations will be loaded separately
+
+            if (data.prediction === 'Real') {
+                resultCard.className = 'bw-box rounded-lg p-12 text-center';
+                resultIcon.textContent = '✓';
+                resultIcon.className = 'text-9xl mb-6 text-white';
+                resultLabel.textContent = '[ AUTHENTIC AUDIO ]';
+                resultLabel.className = 'text-5xl font-black mb-4 orbitron text-white';
+                confidenceProgress.className = 'h-4 rounded-full transition-all duration-2000 ease-out bg-gradient-to-r from-white to-gray-300';
+            } else {
+                resultCard.className = 'bw-box-dark rounded-lg p-12 text-center';
+                resultIcon.textContent = '⚠';
+                resultIcon.className = 'text-9xl mb-6 text-gray-300';
+                resultLabel.textContent = '[ DEEPFAKE DETECTED ]';
+                resultLabel.className = 'text-5xl font-black mb-4 orbitron text-gray-300 glitch';
+                resultLabel.setAttribute('data-text', '[ DEEPFAKE DETECTED ]');
+                confidenceProgress.className = 'h-4 rounded-full transition-all duration-2000 ease-out bg-gradient-to-r from-gray-400 to-gray-600';
+            }
+
+            resultConfidence.textContent = `[ CONFIDENCE: ${data.confidence} ]`;
+            
+            results.classList.remove('hidden');
+            results.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            setTimeout(() => {
+                confidenceProgress.style.width = confidenceNum + '%';
+            }, 500);
+            
+
+        }
+
+        function updateVisualizations(visualData) {
+            const spectrogramImage = document.getElementById('spectrogramImage');
+            const waveformImage = document.getElementById('waveformImage');
+            
+            // Display waveform
+            if (visualData.waveform) {
+                waveformImage.src = 'data:image/png;base64,' + visualData.waveform;
+                document.getElementById('waveformSection').style.display = 'block';
+            }
+            
+            // Display spectrogram
+            if (visualData.spectrogram) {
+                spectrogramImage.src = 'data:image/png;base64,' + visualData.spectrogram;
+                document.getElementById('spectrogramSection').style.display = 'block';
+            }
+        }
+
+        function showBatchResults(results) {
+            const batchResultsList = document.getElementById('batchResultsList');
+            batchResultsList.innerHTML = '';
+            
+            results.forEach(result => {
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'bw-box-dark rounded-lg p-4 mb-4';
+                
+                const statusColor = result.prediction === 'Real' ? 'text-white' : 'text-gray-400';
+                const statusIcon = result.prediction === 'Real' ? '✓' : '⚠';
+                
+                resultDiv.innerHTML = `
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex items-center space-x-3">
+                            <span class="${statusColor} text-2xl">${statusIcon}</span>
+                            <div>
+                                <div class="text-gray-300 orbitron font-bold">${result.filename}</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="${statusColor} orbitron font-bold text-lg">${result.prediction}</div>
+                            <div class="text-gray-500 text-sm">${result.confidence}</div>
+                        </div>
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        ${result.waveform ? `<img src="data:image/png;base64,${result.waveform}" class="w-full h-20 object-cover rounded" alt="Waveform">` : ''}
+                        ${result.spectrogram ? `<img src="data:image/png;base64,${result.spectrogram}" class="w-full h-20 object-cover rounded" alt="Spectrogram">` : ''}
+                    </div>
+                `;
+                
+                batchResultsList.appendChild(resultDiv);
+            });
+            
+            batchResults.classList.remove('hidden');
+            batchResults.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        
+
+        
+        function resetApp() {
+            currentAudioBlob = null;
+            audioFile.value = '';
+            batchFilesInput.value = '';
+            batchFiles = [];
+            batchAnalyzeBtn.classList.add('hidden');
+            audioPreview.classList.add('hidden');
+            results.classList.add('hidden');
+            batchResults.classList.add('hidden');
+            loading.classList.add('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        // Drag and drop functionality
+        function setupDragDrop(element, callback) {
+            element.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                element.classList.add('border-white');
+            });
+            
+            element.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                element.classList.remove('border-white');
+            });
+            
+            element.addEventListener('drop', (e) => {
+                e.preventDefault();
+                element.classList.remove('border-white');
+                callback(e.dataTransfer.files);
+            });
+        }
+        
+        // Setup drag and drop for single file
+        setupDragDrop(document.querySelector('label[for="audioFile"] div'), (files) => {
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type.startsWith('audio/')) {
+                    currentAudioBlob = file;
+                    showAudioPreview(URL.createObjectURL(file));
+                }
+            }
+        });
+        
+        // Setup drag and drop for batch files
+        setupDragDrop(document.querySelector('label[for="batchFiles"] div'), (files) => {
+            const audioFiles = Array.from(files).filter(file => file.type.startsWith('audio/'));
+            if (audioFiles.length > 0) {
+                batchFiles = batchFiles.concat(audioFiles);
+                batchAnalyzeBtn.classList.remove('hidden');
+                batchAnalyzeBtn.textContent = `[ ANALYZE ${batchFiles.length} FILES ]`;
+            }
+        });
+        
+
+    </script>
+</body>
+</html>
