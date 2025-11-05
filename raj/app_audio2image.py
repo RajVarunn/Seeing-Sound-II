@@ -9,6 +9,50 @@ from PIL import Image
 
 app = Flask(__name__)
 
+# Load AudioCaps captions mapping
+CAPTIONS_FILE = '../extracted_audiocaps/captions.txt'
+audio_captions = {}
+
+def load_captions():
+    """Load captions from AudioCaps captions.txt file"""
+    global audio_captions
+    
+    if not os.path.exists(CAPTIONS_FILE):
+        print(f"Warning: Captions file not found at {CAPTIONS_FILE}")
+        return
+    
+    try:
+        with open(CAPTIONS_FILE, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                
+                # Split by tab (format: filename\tcaption)
+                parts = line.split('\t')
+                if len(parts) >= 2:
+                    filename = parts[0].strip()
+                    caption = parts[1].strip()
+                    audio_captions[filename] = caption
+        
+        print(f"✓ Loaded {len(audio_captions)} audio captions from AudioCaps")
+    except Exception as e:
+        print(f"Error loading captions: {e}")
+
+def get_caption_for_audio(filename):
+    """Get caption for an audio file by filename"""
+    # Try exact match first
+    if filename in audio_captions:
+        return audio_captions[filename]
+    
+    # Try without extension
+    base_name = os.path.splitext(filename)[0]
+    for key in audio_captions.keys():
+        if os.path.splitext(key)[0] == base_name:
+            return audio_captions[key]
+    
+    return None
+
 # Global model instances - support for multiple models
 models = {
     'unet': {
@@ -18,11 +62,11 @@ models = {
         'module': 'main2',
         'description': '2HEAD + Larger Dataset + UNET (Best Quality)'
     },
-    'no_unet': {
+    'mlponly': {
         'model': None,
         'config': None,
         'checkpoint': 'audio2image_mapper_dual.pt',
-        'module': 'main2_backup',
+        'module': 'mlponly',
         'description': '2HEAD + Different Dataset + No UNET (Faster)'
     }
 }
@@ -34,7 +78,7 @@ def load_model(model_type='unet'):
     global current_model
     
     if model_type not in models:
-        raise ValueError(f"Invalid model type: {model_type}. Choose 'unet' or 'no_unet'")
+        raise ValueError(f"Invalid model type: {model_type}. Choose 'unet' or 'mlponly'")
     
     model_info = models[model_type]
     
@@ -42,7 +86,7 @@ def load_model(model_type='unet'):
     if model_info['module'] == 'main2':
         from main2 import Audio2ImageModel, Config
     else:
-        from main2_backup import Audio2ImageModel, Config
+        from mlponly import Audio2ImageModel, Config
     
     config = Config()
     config.ckpt_path = model_info['checkpoint']
@@ -133,13 +177,18 @@ def generate_image():
             generated_image.save(buffered, format="PNG")
             img_str = base64.b64encode(buffered.getvalue()).decode()
             
+            # Get caption for this audio file
+            caption = get_caption_for_audio(audio_file.filename)
+            
             # Clean up temp file
             os.unlink(temp_audio_path)
             
             return jsonify({
                 'success': True,
                 'image_url': f'data:image/png;base64,{img_str}',
-                'model_used': models[model_type]['description']
+                'model_used': models[model_type]['description'],
+                'caption': caption,
+                'filename': audio_file.filename
             })
             
         except Exception as e:
@@ -209,7 +258,12 @@ def list_models():
 
 if __name__ == '__main__':
     print("Starting Audio2Image Web Interface...")
-    print("Loading default model (UNet)...")
+    
+    # Load captions
+    print("\nLoading AudioCaps captions...")
+    load_captions()
+    
+    print("\nLoading default model (UNet)...")
     
     try:
         load_model('unet')
@@ -229,7 +283,7 @@ if __name__ == '__main__':
     print("  Main UI: http://localhost:5010")
     print("  Health: http://localhost:5010/health")
     print("  Models: http://localhost:5010/models")
-    print("  Switch: http://localhost:5010/switch_model/<unet|no_unet>")
+    print("  Switch: http://localhost:5010/switch_model/<unet|mlponly>")
     print("="*50)
     
     app.run(debug=True, host='0.0.0.0', port=5010)

@@ -3,285 +3,627 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>[ AUDIO → IMAGE NEURAL SYNTHESIS ]</title>
+    <title>Audio → Image AI Generator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
-        .orbitron { font-family: 'Orbitron', monospace; }
-        .wb-box { 
-            background: rgba(255, 255, 255, 0.95);
-            border: 2px solid #000;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Space Grotesk', sans-serif;
+            background: #000;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
         }
-        .wb-box-light { 
-            background: rgba(255, 255, 255, 0.8);
-            border: 1px solid #000;
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Animated Grid Background */
+        .gradient-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background: #000;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
         }
-        /* Sound Waves Background */
-        .sound-waves {
+        
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        /* Floating Audio Waveforms */
+        .particles {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             z-index: -1;
-            opacity: 0.2;
             overflow: hidden;
         }
         
-        .wave-line {
+        .particle {
             position: absolute;
-            width: 100%;
+            width: 2px;
             height: 2px;
-            background: linear-gradient(90deg, transparent, #000, transparent);
-            animation: wave-flow 4s linear infinite;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            animation: float 20s infinite ease-in-out;
         }
         
-        .wave-bar {
+        @keyframes float {
+            0%, 100% { transform: translateY(0) translateX(0); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100vh) translateX(100px); opacity: 0; }
+        }
+        
+        /* Big floating waveform spanning the entire screen */
+        .floating-waveform {
             position: absolute;
-            width: 3px;
-            background: #000;
-            border-radius: 2px;
-            animation: wave-pulse 1.5s ease-in-out infinite;
-        }
-        
-        @keyframes wave-flow {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
-        }
-        
-        @keyframes wave-pulse {
-            0%, 100% { height: 20px; opacity: 0.4; }
-            50% { height: 80px; opacity: 1; }
-        }
-        .pulse-ring {
-            animation: pulse-ring 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
-        }
-        @keyframes pulse-ring {
-            0% { transform: scale(0.8); opacity: 1; }
-            80%, 100% { transform: scale(1.2); opacity: 0; }
-        }
-        .generation-wave {
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
             display: flex;
-            justify-content: center;
-            align-items: center;
             gap: 4px;
+            align-items: flex-end;
+            opacity: 0.08;
+            animation: float-wave-big 40s infinite ease-in-out;
         }
-        .wave-bar {
-            width: 4px;
-            background: linear-gradient(to top, #666, #000);
-            border-radius: 2px;
-            animation: wave 1.5s ease-in-out infinite;
+        
+        .floating-waveform .bar {
+            width: 6px;
+            background: linear-gradient(to top, rgba(255,255,255,0.2), rgba(255,255,255,0.9));
+            border-radius: 3px;
+            animation: wave-height 1.5s ease-in-out infinite;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
         }
-        .wave-bar:nth-child(1) { height: 20px; animation-delay: 0s; }
-        .wave-bar:nth-child(2) { height: 30px; animation-delay: 0.1s; }
-        .wave-bar:nth-child(3) { height: 40px; animation-delay: 0.2s; }
-        .wave-bar:nth-child(4) { height: 35px; animation-delay: 0.3s; }
-        .wave-bar:nth-child(5) { height: 45px; animation-delay: 0.4s; }
-        .wave-bar:nth-child(6) { height: 25px; animation-delay: 0.5s; }
-        .wave-bar:nth-child(7) { height: 35px; animation-delay: 0.6s; }
-        .wave-bar:nth-child(8) { height: 30px; animation-delay: 0.7s; }
-        @keyframes wave {
-            0%, 100% { transform: scaleY(0.5); opacity: 0.7; }
+        
+        @keyframes float-wave-big {
+            0%, 100% { 
+                bottom: -20%;
+                opacity: 0;
+            }
+            10% { 
+                opacity: 0.08;
+            }
+            50% { 
+                bottom: 50%;
+                transform: translateX(-50%) translateY(50%);
+                opacity: 0.12;
+            }
+            90% { 
+                opacity: 0.08;
+            }
+            100% { 
+                bottom: 120%;
+                opacity: 0;
+            }
+        }
+        
+        @keyframes wave-height {
+            0%, 100% { transform: scaleY(0.4); opacity: 0.6; }
             50% { transform: scaleY(1); opacity: 1; }
         }
-        .model-selector.active {
-            background: rgba(0, 0, 0, 0.05);
-            border-color: #000 !important;
-            border-width: 2px;
+        
+        /* Glass morphism cards */
+        .glass {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+        }
+        
+        .glass-strong {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+        }
+        
+        /* Neon glow effects */
+        .neon-border {
+            position: relative;
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3),
+                        inset 0 0 20px rgba(255, 255, 255, 0.05);
+        }
+        
+        .neon-glow {
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.4),
+                        0 0 60px rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Pulse animation */
+        .pulse-slow {
+            animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
+        }
+        
+        /* Sound wave visualizer */
+        .sound-wave {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            height: 40px;
+        }
+        
+        .wave-bar {
+            width: 4px;
+            background: linear-gradient(to top, #666, #fff);
+            border-radius: 2px;
+            animation: wave-bounce 1.2s ease-in-out infinite;
+        }
+        
+        .wave-bar:nth-child(1) { height: 15px; animation-delay: 0s; }
+        .wave-bar:nth-child(2) { height: 25px; animation-delay: 0.1s; }
+        .wave-bar:nth-child(3) { height: 35px; animation-delay: 0.2s; }
+        .wave-bar:nth-child(4) { height: 30px; animation-delay: 0.3s; }
+        .wave-bar:nth-child(5) { height: 40px; animation-delay: 0.4s; }
+        .wave-bar:nth-child(6) { height: 20px; animation-delay: 0.5s; }
+        .wave-bar:nth-child(7) { height: 30px; animation-delay: 0.6s; }
+        .wave-bar:nth-child(8) { height: 25px; animation-delay: 0.7s; }
+        
+        @keyframes wave-bounce {
+            0%, 100% { transform: scaleY(0.5); opacity: 0.6; }
+            50% { transform: scaleY(1.2); opacity: 1; }
+        }
+        
+        /* Loading spinner */
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #fff;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Button hover effects */
+        .btn-gradient {
+            background: linear-gradient(135deg, #000 0%, #333 100%);
+            border: 2px solid #fff;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-gradient:hover {
+            background: linear-gradient(135deg, #fff 0%, #e0e0e0 100%);
+            color: #000 !important;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(255, 255, 255, 0.3);
+        }
+        
+        /* Model selector */
+        .model-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.3);
+        }
+        
+        .model-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .model-card.active {
+            border-color: #fff;
+            background: rgba(0, 0, 0, 0.9);
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.5),
+                        inset 0 0 30px rgba(255, 255, 255, 0.05);
+            transform: scale(1.02);
+        }
+        
+        /* Image reveal animation */
+        @keyframes reveal {
+            from {
+                opacity: 0;
+                transform: scale(0.8) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+        
+        .reveal-animation {
+            animation: reveal 0.6s ease-out;
+        }
+        
+        /* Upload zone */
+        .upload-zone {
+            border: 3px dashed rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .upload-zone:hover {
+            border-color: rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Icon animations */
+        .icon-bounce {
+            animation: bounce 2s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        /* Stats badge */
+        .stats-badge {
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(0,0,0,0.3));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        /* Recording button states */
+        .bg-red-600 {
+            background-color: #dc2626 !important;
+        }
+        .hover\:bg-red-700:hover {
+            background-color: #b91c1c !important;
         }
     </style>
 </head>
-<body class="bg-white text-black min-h-screen">
-    <!-- Sound Waves Background -->
-    <div class="sound-waves">
-        <!-- Flowing wave lines -->
-        <div class="wave-line" style="top: 20%; animation-delay: 0s;"></div>
-        <div class="wave-line" style="top: 40%; animation-delay: 1s;"></div>
-        <div class="wave-line" style="top: 60%; animation-delay: 2s;"></div>
-        <div class="wave-line" style="top: 80%; animation-delay: 3s;"></div>
-        
-        <!-- Flowing wave lines -->
-        <div class="wave-line" style="top: 20%; animation-delay: 0s;"></div>
-        <div class="wave-line" style="top: 40%; animation-delay: 1s;"></div>
-        <div class="wave-line" style="top: 60%; animation-delay: 2s;"></div>
-        <div class="wave-line" style="top: 80%; animation-delay: 3s;"></div>
-    </div>
-    <div class="container mx-auto px-6 py-8 max-w-6xl">
+<body>
+    <!-- Animated Gradient Background -->
+    <div class="gradient-bg"></div>
+    
+    <!-- Floating Particles -->
+    <div class="particles" id="particles"></div>
+    
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
         <!-- Header -->
         <div class="text-center mb-12">
-            <div class="flex justify-center items-center space-x-4 mb-6">
-                <div class="w-16 h-16 wb-box rounded-full flex items-center justify-center relative">
-                    <div class="absolute inset-0 rounded-full pulse-ring border-2 border-black"></div>
-                    <i class="fas fa-brain text-black text-2xl"></i>
+            <div class="inline-block glass rounded-3xl px-8 py-6 mb-6 neon-glow">
+                <div class="flex items-center justify-center space-x-6 mb-4">
+                    <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center pulse-slow shadow-lg">
+                        <i class="fas fa-microphone text-black text-2xl"></i>
+                    </div>
+                    <h1 class="text-6xl font-bold text-white tracking-widest mono" style="letter-spacing: 0.1em;">
+                        AUDIO→IMAGE
+                    </h1>
+                    <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center pulse-slow shadow-lg" style="animation-delay: 1s;">
+                        <i class="fas fa-image text-black text-2xl"></i>
+                    </div>
                 </div>
-                <h1 class="text-6xl font-black orbitron text-black">
-                    AUDIO → IMAGE
-                </h1>
-                <div class="w-16 h-16 wb-box rounded-full flex items-center justify-center relative">
-                    <div class="absolute inset-0 rounded-full pulse-ring border-2 border-black" style="animation-delay: 1s;"></div>
-                    <i class="fas fa-image text-black text-2xl"></i>
+                <div class="sound-wave mb-3">
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
                 </div>
+                <p class="text-xl text-white font-semibold mono tracking-wider">NEURAL SYNTHESIS ENGINE</p>
+                <p class="text-xs text-gray-400 mt-2 mono tracking-widest">[ POWERED BY CLAP + STABLE DIFFUSION ]</p>
             </div>
-            <p class="text-xl text-black orbitron">[ NEURAL SYNTHESIS ENGINE ]</p>
-            <p class="text-sm text-gray-700 mt-2">CLAP + Stable Diffusion Multi-Task Architecture</p>
         </div>
 
         <!-- Main Interface -->
-        <div class="max-w-4xl mx-auto">
-            <!-- Audio Input Section -->
-            <div id="inputSection" class="wb-box rounded-lg p-8 mb-8">
-                <div class="flex items-center space-x-3 mb-6">
-                    <div class="w-10 h-10 wb-box rounded-full flex items-center justify-center">
-                        <i class="fas fa-microphone text-black"></i>
-                    </div>
-                    <h2 class="text-2xl font-bold orbitron text-black">[ AUDIO INPUT ]</h2>
-                </div>
-
-                <!-- File Upload -->
-                <div class="mb-6">
-                    <label class="block text-black text-sm mb-3 orbitron">UPLOAD AUDIO FILE</label>
-                    <div class="relative">
-                        <input type="file" id="audioFile" accept="audio/*" class="hidden">
-                        <button onclick="document.getElementById('audioFile').click()" 
-                                class="w-full wb-box-light rounded-lg p-6 border-2 border-dashed border-black hover:border-gray-600 transition-all duration-300 text-center">
-                            <i class="fas fa-cloud-upload-alt text-4xl text-black mb-3"></i>
-                            <p class="text-black orbitron">[ CLICK TO UPLOAD AUDIO ]</p>
-                            <p class="text-xs text-gray-700 mt-2">Supports WAV, MP3, FLAC formats</p>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Model Selection -->
-                <div class="mb-6">
-                    <label class="block text-black text-sm mb-3 orbitron">SELECT MODEL</label>
-                    <div class="grid grid-cols-2 gap-4">
-                        <button onclick="selectModel('unet')" id="modelUnet"
-                                class="wb-box-light rounded-lg p-4 border-2 border-black hover:bg-gray-100 transition-all duration-300 model-selector active">
-                            <div class="text-center">
-                                <i class="fas fa-star text-yellow-600 text-2xl mb-2"></i>
-                                <h3 class="text-sm font-bold orbitron text-black mb-1">UNET MODEL</h3>
-                                <p class="text-xs text-gray-700">Larger Dataset + UNET</p>
-                                <p class="text-xs text-gray-600 mt-1">Best Quality</p>
-                            </div>
-                        </button>
-                        <button onclick="selectModel('no_unet')" id="modelNoUnet"
-                                class="wb-box-light rounded-lg p-4 border-2 border-gray-300 hover:bg-gray-100 transition-all duration-300 model-selector">
-                            <div class="text-center">
-                                <i class="fas fa-bolt text-blue-600 text-2xl mb-2"></i>
-                                <h3 class="text-sm font-bold orbitron text-black mb-1">NO UNET</h3>
-                                <p class="text-xs text-gray-700">Different Dataset</p>
-                                <p class="text-xs text-gray-600 mt-1">Faster</p>
-                            </div>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Audio Preview -->
-                <div id="audioPreview" class="hidden mb-6">
-                    <div class="wb-box-light rounded-lg p-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="text-sm text-black orbitron">[ AUDIO PREVIEW ]</span>
-                            <span id="audioInfo" class="text-xs text-gray-700"></span>
-                        </div>
-                        <audio id="audioPlayer" controls class="w-full">
-                            <source id="audioSource" src="" type="audio/mpeg">
-                        </audio>
-                    </div>
-                </div>
-
-                <!-- Generate Button -->
-                <button id="generateBtn" onclick="generateImage()" 
-                        class="w-full wb-box py-4 rounded-lg text-black font-bold orbitron text-lg hover:bg-gray-100 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
-                    <i class="fas fa-magic mr-3"></i>
-                    [ GENERATE IMAGE ]
-                </button>
-            </div>
-
-            <!-- Loading Animation -->
-            <div id="loading" class="wb-box rounded-lg p-12 text-center hidden">
-                <div class="relative inline-block mb-8">
-                    <div class="w-24 h-24 border-4 border-gray-700 border-t-white rounded-full animate-spin"></div>
-                    <div class="absolute inset-0 w-24 h-24 border-4 border-transparent border-r-gray-400 rounded-full animate-spin" style="animation-direction: reverse; animation-duration: 0.8s;"></div>
-                </div>
-                <h3 class="text-3xl font-bold text-black orbitron mb-4">[ NEURAL SYNTHESIS IN PROGRESS ]</h3>
-                <p class="text-black mb-6">Processing audio through CLAP → Stable Diffusion pipeline...</p>
-                <div class="generation-wave">
-                    <div class="wave-bar"></div>
-                    <div class="wave-bar"></div>
-                    <div class="wave-bar"></div>
-                    <div class="wave-bar"></div>
-                    <div class="wave-bar"></div>
-                    <div class="wave-bar"></div>
-                    <div class="wave-bar"></div>
-                    <div class="wave-bar"></div>
-                </div>
-                <p class="text-xs text-gray-700 mt-4">This may take 30-60 seconds depending on your hardware</p>
-            </div>
-
-            <!-- Results -->
-            <div id="results" class="hidden">
-                <div class="wb-box rounded-lg p-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Left Column: Audio Input -->
+            <div id="inputSection">
+                <div class="glass-strong rounded-3xl p-8 h-full">
                     <div class="flex items-center space-x-3 mb-6">
-                        <div class="w-10 h-10 wb-box rounded-full flex items-center justify-center">
-                            <i class="fas fa-image text-black"></i>
+                        <div class="w-12 h-12 bg-black rounded-lg flex items-center justify-center shadow-lg border-2 border-gray-300">
+                            <i class="fas fa-microphone text-white text-xl"></i>
                         </div>
-                        <h2 class="text-2xl font-bold orbitron text-black">[ GENERATED IMAGE ]</h2>
+                        <h2 class="text-3xl font-bold text-black mono tracking-wider">AUDIO INPUT</h2>
                     </div>
-                    
-                    <!-- Generated Image -->
-                    <div class="text-center mb-6">
-                        <div class="wb-box-light rounded-lg p-4 inline-block">
-                            <img id="generatedImage" src="" alt="Generated Image" class="max-w-full h-auto rounded">
+
+                    <!-- File Upload Zone -->
+                    <div class="mb-6">
+                        <label class="block text-gray-800 text-xs font-bold mb-3 mono tracking-widest">[ SELECT AUDIO FILE ]</label>
+                        <div class="relative">
+                            <input type="file" id="audioFile" accept="audio/*" class="hidden">
+                            <button onclick="document.getElementById('audioFile').click()" 
+                                    class="w-full upload-zone rounded-2xl p-12 hover:scale-105 transition-all duration-300 text-center bg-gray-50 border-2 border-dashed border-gray-400">
+                                <div class="icon-bounce">
+                                    <i class="fas fa-file-audio text-6xl text-black mb-4"></i>
+                                </div>
+                                <p class="text-black font-bold text-lg mb-2 mono tracking-wide">[ DRAG FILE HERE ]</p>
+                                <p class="text-sm text-gray-600 mono">or click to browse</p>
+                                <div class="mt-4 flex justify-center space-x-2">
+                                    <span class="px-3 py-1 bg-black text-white rounded text-xs mono border border-gray-300">WAV</span>
+                                    <span class="px-3 py-1 bg-black text-white rounded text-xs mono border border-gray-300">MP3</span>
+                                    <span class="px-3 py-1 bg-black text-white rounded text-xs mono border border-gray-300">FLAC</span>
+                                </div>
+                            </button>
                         </div>
                     </div>
-                    
-                    <!-- Generation Info -->
-                    <div class="text-center mb-6">
-                        <div class="wb-box-light rounded-lg p-4 inline-block">
-                            <div class="text-2xl font-bold text-black orbitron" id="generationTime">--</div>
-                            <div class="text-xs text-black">GENERATION TIME</div>
-                        </div>
-                        <div class="wb-box-light rounded-lg p-4 inline-block ml-4">
-                            <div class="text-sm font-bold text-black orbitron" id="modelUsed">--</div>
-                            <div class="text-xs text-black">MODEL USED</div>
+
+                    <!-- OR Divider -->
+                    <div class="flex items-center mb-6">
+                        <div class="flex-1 border-t-2 border-gray-300"></div>
+                        <span class="px-4 text-gray-500 font-bold mono text-sm">OR</span>
+                        <div class="flex-1 border-t-2 border-gray-300"></div>
+                    </div>
+
+                    <!-- Record Audio -->
+                    <div class="mb-6">
+                        <label class="block text-gray-800 text-xs font-bold mb-3 mono tracking-widest">[ RECORD AUDIO ]</label>
+                        <div class="bg-gray-50 rounded-2xl p-6 border-2 border-gray-400">
+                            <div class="text-center">
+                                <button id="recordBtn" onclick="toggleRecording()" 
+                                        class="w-24 h-24 rounded-full bg-black hover:bg-gray-800 text-white transition-all shadow-lg hover:shadow-xl mb-4 mx-auto flex items-center justify-center">
+                                    <i id="recordIcon" class="fas fa-microphone text-3xl"></i>
+                                </button>
+                                <p id="recordStatus" class="text-sm text-gray-600 mono">Click to start recording</p>
+                                <p id="recordTimer" class="text-xs text-gray-500 mono mt-2 hidden">00:00</p>
+                            </div>
                         </div>
                     </div>
-                    
-                    <!-- Action Buttons -->
-                    <div class="flex flex-col sm:flex-row gap-4">
-                        <button onclick="downloadImage()" 
-                                class="flex-1 wb-box py-3 rounded-lg text-black orbitron hover:bg-gray-100 transition-all duration-300">
-                            <i class="fas fa-download mr-2"></i>
-                            [ DOWNLOAD IMAGE ]
-                        </button>
-                        <button onclick="resetApp()" 
-                                class="flex-1 wb-box py-3 rounded-lg text-black orbitron transition-all duration-300">
-                            <i class="fas fa-redo mr-2"></i>
-                            [ GENERATE ANOTHER ]
-                        </button>
+
+                    <!-- Audio Preview -->
+                    <div id="audioPreview" class="hidden mb-6">
+                        <div class="neon-border rounded-2xl p-5 bg-white">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-sm font-bold text-black mono flex items-center tracking-wider">
+                                    <i class="fas fa-music text-black mr-2"></i>
+                                    [ AUDIO PREVIEW ]
+                                </span>
+                                <span id="audioInfo" class="text-xs text-gray-500 mono"></span>
+                            </div>
+                            <audio id="audioPlayer" controls class="w-full">
+                                <source id="audioSource" src="" type="audio/mpeg">
+                            </audio>
+                        </div>
+                    </div>
+
+                    <!-- Model Selection -->
+                    <div class="mb-6">
+                        <label class="block text-gray-800 text-xs font-bold mb-3 mono tracking-widest">[ CHOOSE MODEL ]</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div onclick="selectModel('unet')" id="modelUnet"
+                                    class="model-card glass rounded-2xl p-6 active cursor-pointer">
+                                <div class="text-center">
+                                    <div class="w-16 h-16 bg-white rounded-lg mx-auto mb-3 flex items-center justify-center shadow-lg border-2 border-gray-300">
+                                        <i class="fas fa-star text-black text-2xl"></i>
+                                    </div>
+                                    <h3 class="text-lg font-bold text-white mb-1 mono tracking-wide">UNET MODEL</h3>
+                                    <p class="text-xs text-gray-300 mb-2 mono">Trained on VGG Dataset</p>
+                                    <span class="inline-block px-3 py-1 bg-white text-black rounded text-xs font-bold mono">BEST QUALITY</span>
+                                </div>
+                            </div>
+                            <div onclick="selectModel('mlponly')" id="modelmlponly"
+                                    class="model-card glass rounded-2xl p-6 cursor-pointer">
+                                <div class="text-center">
+                                    <div class="w-16 h-16 bg-white rounded-lg mx-auto mb-3 flex items-center justify-center shadow-lg border-2 border-gray-300">
+                                        <i class="fas fa-bolt text-black text-2xl"></i>
+                                    </div>
+                                    <h3 class="text-lg font-bold text-white mb-1 mono tracking-wide">MLP Only</h3>
+                                    <p class="text-xs text-gray-300 mb-2 mono">Trained on VGG Dataset</p>
+                                    <span class="inline-block px-3 py-1 bg-white text-black rounded text-xs font-bold mono">FASTER</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Generate Button -->
+                    <button id="generateBtn" onclick="generateImage()" 
+                            class="w-full btn-gradient py-5 rounded-2xl text-white font-bold text-lg shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none mono tracking-widest">
+                        <i class="fas fa-magic mr-3"></i>
+                        [ GENERATE IMAGE ]
+                        <i class="fas fa-arrow-right ml-3"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Column: Output/Loading/Results -->
+            <div>
+                <!-- Initial State -->
+                <div id="initialState" class="glass rounded-3xl p-12 h-full flex flex-col items-center justify-center text-center border-2 border-white/20">
+                    <div class="w-32 h-32 bg-white/10 rounded-full flex items-center justify-center mb-6 pulse-slow border-2 border-white/30">
+                        <i class="fas fa-image text-white text-5xl"></i>
+                    </div>
+                    <h3 class="text-3xl font-bold text-white mb-3 mono tracking-wider">OUTPUT DISPLAY</h3>
+                    <p class="text-white/80 text-lg mono tracking-wide">[ Awaiting Generation ]</p>
+                    <div class="mt-6 flex space-x-1">
+                        <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                        <div class="w-2 h-2 bg-white rounded-full animate-pulse" style="animation-delay: 0.2s;"></div>
+                        <div class="w-2 h-2 bg-white rounded-full animate-pulse" style="animation-delay: 0.4s;"></div>
+                    </div>
+                </div>
+
+                <!-- Loading Animation -->
+                <div id="loading" class="glass rounded-3xl p-12 text-center hidden h-full flex flex-col items-center justify-center border-2 border-white/20">
+                    <div class="relative mb-8">
+                        <div class="spinner"></div>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <i class="fas fa-wand-magic-sparkles text-white text-xl"></i>
+                        </div>
+                    </div>
+                    <h3 class="text-4xl font-bold text-white mb-4 mono tracking-wider">PROCESSING</h3>
+                    <p class="text-white/90 mb-6 text-lg mono tracking-wide">[ Neural Network Active ]</p>
+                    <div class="sound-wave mb-6">
+                        <div class="wave-bar bg-white"></div>
+                        <div class="wave-bar bg-white"></div>
+                        <div class="wave-bar bg-white"></div>
+                        <div class="wave-bar bg-white"></div>
+                        <div class="wave-bar bg-white"></div>
+                        <div class="wave-bar bg-white"></div>
+                        <div class="wave-bar bg-white"></div>
+                        <div class="wave-bar bg-white"></div>
+                    </div>
+                    <p class="text-sm text-white/70 mono tracking-widest">ESTIMATED: 30-60 SECONDS</p>
+                </div>
+
+                <!-- Results -->
+                <div id="results" class="hidden">
+                    <div class="glass-strong rounded-3xl p-8 reveal-animation">
+                        <div class="flex items-center justify-between mb-6">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 bg-black rounded-lg flex items-center justify-center shadow-lg border-2 border-gray-300">
+                                    <i class="fas fa-check text-white text-xl"></i>
+                                </div>
+                                <h2 class="text-3xl font-bold text-black mono tracking-wider">GENERATED IMAGE</h2>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button onclick="downloadImage()" 
+                                        class="px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-xl transition-all shadow-lg hover:shadow-xl mono text-sm">
+                                    <i class="fas fa-download mr-2"></i>
+                                    DOWNLOAD
+                                </button>
+                                <button onclick="resetApp()" 
+                                        class="px-4 py-2 glass text-white hover:bg-white/20 rounded-xl transition-all mono text-sm border border-white/30">
+                                    <i class="fas fa-redo mr-2"></i>
+                                    NEW
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Generated Image -->
+                        <div class="mb-6 neon-border rounded-2xl overflow-hidden bg-black p-2">
+                            <img id="generatedImage" src="" alt="Generated Image" class="w-full h-auto rounded-xl">
+                        </div>
+                        
+                        <!-- Audio Info / Caption -->
+                        <div class="mb-6 glass rounded-xl p-4 border border-white/20">
+                            <div class="flex items-start space-x-3">
+                                <i class="fas fa-file-audio text-white text-xl mt-1"></i>
+                                <div class="flex-1">
+                                    <p class="text-xs text-white/60 mono tracking-widest mb-1">[ SOURCE AUDIO ]</p>
+                                    <p class="text-white font-bold mono" id="audioCaption">--</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Generation Stats -->
+                        <div class="grid grid-cols-3 gap-4">
+                            <div class="stats-badge rounded-xl p-4 text-center border border-white/20">
+                                <div class="text-3xl font-bold text-white mono" id="generationTime">--</div>
+                                <div class="text-xs text-white/80 mt-1 mono tracking-widest">TIME</div>
+                            </div>
+                            <div class="stats-badge rounded-xl p-4 text-center border border-white/20">
+                                <div class="text-lg font-bold text-white mono" id="modelUsed">--</div>
+                                <div class="text-xs text-white/80 mt-1 mono tracking-widest">MODEL</div>
+                            </div>
+                            <div class="stats-badge rounded-xl p-4 text-center border border-white/20">
+                                <div class="text-3xl font-bold text-white">✓</div>
+                                <div class="text-xs text-white/80 mt-1 mono tracking-widest">SUCCESS</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Footer -->
-        <div class="text-center mt-16 text-black">
-            <p class="text-lg orbitron text-black">[ POWERED BY CLAP + STABLE DIFFUSION ]</p>
-            <div class="flex justify-center space-x-2 mt-4">
-                <div class="w-2 h-2 bg-black rounded-full animate-pulse"></div>
-                <div class="w-2 h-2 bg-black rounded-full animate-pulse" style="animation-delay: 0.2s;"></div>
-                <div class="w-2 h-2 bg-black rounded-full animate-pulse" style="animation-delay: 0.4s;"></div>
+        <div class="text-center mt-12">
+            <div class="glass rounded-2xl px-8 py-6 inline-block border border-white/20">
+                <p class="text-lg font-bold text-white mb-2 mono tracking-widest">[ POWERED BY CLAP + STABLE DIFFUSION ]</p>
+                <div class="flex justify-center items-center space-x-3 text-white/80 text-sm mono">
+                    <span class="flex items-center tracking-wider"><i class="fas fa-brain mr-2"></i>DEEP LEARNING</span>
+                    <span>•</span>
+                    <span class="flex items-center tracking-wider"><i class="fas fa-microchip mr-2"></i>NEURAL NETWORKS</span>
+                    <span>•</span>
+                    <span class="flex items-center tracking-wider"><i class="fas fa-palette mr-2"></i>AI ART</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Generation History -->
+        <div id="historySection" class="mt-12 hidden">
+            <div class="glass-strong rounded-3xl p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 bg-black rounded-lg flex items-center justify-center shadow-lg border-2 border-gray-300">
+                            <i class="fas fa-history text-white text-xl"></i>
+                        </div>
+                        <h2 class="text-3xl font-bold text-black mono tracking-wider">SESSION HISTORY</h2>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <span class="text-sm text-gray-600 mono" id="historyCount">0 generations</span>
+                        <button onclick="clearHistory()" class="px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-xl transition-all shadow-lg mono text-sm">
+                            <i class="fas fa-trash mr-2"></i>
+                            CLEAR
+                        </button>
+                    </div>
+                </div>
+
+                <!-- History Grid -->
+                <div id="historyGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <!-- History items will be added here dynamically -->
+                </div>
             </div>
         </div>
     </div>
 
     <script>
+        // Generate floating particles
+        function createParticles() {
+            const particles = document.getElementById('particles');
+            
+            // Create small particles
+            for (let i = 0; i < 30; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 20 + 's';
+                particle.style.animationDuration = (15 + Math.random() * 10) + 's';
+                particles.appendChild(particle);
+            }
+            
+            // Create ONE BIG waveform spanning the entire width
+            const waveform = document.createElement('div');
+            waveform.className = 'floating-waveform';
+            
+            // Create many bars to span the entire screen width
+            const barCount = Math.floor(window.innerWidth / 10); // Adjust bar count based on screen width
+            for (let j = 0; j < barCount; j++) {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                // Vary heights to create a natural waveform pattern
+                const baseHeight = 100 + Math.sin(j * 0.1) * 80;
+                const randomVariation = Math.random() * 100;
+                bar.style.height = (baseHeight + randomVariation) + 'px';
+                bar.style.animationDelay = (j * 0.02) + 's';
+                bar.style.animationDuration = (1.2 + Math.random() * 0.6) + 's';
+                waveform.appendChild(bar);
+            }
+            
+            particles.appendChild(waveform);
+        }
+        createParticles();
+
         let currentAudioFile = null;
         let generationStartTime = null;
         let selectedModel = 'unet'; // Default model
+        
+        // Recording variables
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let recordingStartTime = null;
+        let recordingTimer = null;
+        let isRecording = false;
+        
+        // History tracking
+        let generationHistory = [];
 
         // DOM Elements
         const audioFile = document.getElementById('audioFile');
@@ -293,19 +635,26 @@
         const loading = document.getElementById('loading');
         const results = document.getElementById('results');
         const inputSection = document.getElementById('inputSection');
+        const initialState = document.getElementById('initialState');
+        const recordBtn = document.getElementById('recordBtn');
+        const recordIcon = document.getElementById('recordIcon');
+        const recordStatus = document.getElementById('recordStatus');
+        const recordTimer = document.getElementById('recordTimer');
+        const historySection = document.getElementById('historySection');
+        const historyGrid = document.getElementById('historyGrid');
+        const historyCount = document.getElementById('historyCount');
 
         // Model selection handler
         function selectModel(modelType) {
             selectedModel = modelType;
             
             // Update UI
-            document.querySelectorAll('.model-selector').forEach(btn => {
-                btn.classList.remove('active');
-                btn.style.borderColor = '#d1d5db';
+            document.querySelectorAll('.model-card').forEach(card => {
+                card.classList.remove('active');
             });
             
-            const selectedBtn = document.getElementById(modelType === 'unet' ? 'modelUnet' : 'modelNoUnet');
-            selectedBtn.classList.add('active');
+            const selectedCard = document.getElementById(modelType === 'unet' ? 'modelUnet' : 'modelmlponly');
+            selectedCard.classList.add('active');
             
             console.log('Model selected:', modelType);
         }
@@ -322,19 +671,99 @@
         function showAudioPreview(url) {
             audioSource.src = url;
             audioPlayer.load();
-            audioInfo.textContent = `${currentAudioFile.name} (${(currentAudioFile.size / 1024 / 1024).toFixed(2)} MB)`;
+            audioInfo.textContent = `${currentAudioFile.name} • ${(currentAudioFile.size / 1024 / 1024).toFixed(2)} MB`;
             audioPreview.classList.remove('hidden');
+        }
+
+        // Recording functions
+        async function toggleRecording() {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                await startRecording();
+            }
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    const audioFile = new File([audioBlob], `recording_${Date.now()}.wav`, { type: 'audio/wav' });
+                    
+                    currentAudioFile = audioFile;
+                    showAudioPreview(URL.createObjectURL(audioBlob));
+                    generateBtn.disabled = false;
+                    
+                    // Stop all tracks
+                    stream.getTracks().forEach(track => track.stop());
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                recordingStartTime = Date.now();
+                
+                // Update UI
+                recordBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+                recordBtn.classList.remove('bg-black', 'hover:bg-gray-800');
+                recordIcon.classList.remove('fa-microphone');
+                recordIcon.classList.add('fa-stop');
+                recordStatus.textContent = 'Recording... Click to stop';
+                recordTimer.classList.remove('hidden');
+                
+                // Start timer
+                recordingTimer = setInterval(() => {
+                    const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+                    const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+                    const seconds = (elapsed % 60).toString().padStart(2, '0');
+                    recordTimer.textContent = `${minutes}:${seconds}`;
+                }, 100);
+                
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                alert('❌ Error: Could not access microphone. Please check permissions.');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                isRecording = false;
+                
+                // Clear timer
+                if (recordingTimer) {
+                    clearInterval(recordingTimer);
+                    recordingTimer = null;
+                }
+                
+                // Reset UI
+                recordBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
+                recordBtn.classList.add('bg-black', 'hover:bg-gray-800');
+                recordIcon.classList.add('fa-microphone');
+                recordIcon.classList.remove('fa-stop');
+                recordStatus.textContent = 'Click to start recording';
+                recordTimer.classList.add('hidden');
+                recordTimer.textContent = '00:00';
+            }
         }
 
         function generateImage() {
             if (!currentAudioFile) {
-                alert('[ ERROR: Please upload an audio file first ]');
+                alert('⚠️ Please upload an audio file first');
                 return;
             }
 
-            // Show loading
+            // Show loading (keep input section visible)
             generationStartTime = Date.now();
-            inputSection.classList.add('hidden');
+            initialState.classList.add('hidden');
             results.classList.add('hidden');
             loading.classList.remove('hidden');
 
@@ -352,16 +781,16 @@
             .then(data => {
                 loading.classList.add('hidden');
                 if (data.error) {
-                    alert('[ GENERATION ERROR: ' + data.error + ' ]');
-                    inputSection.classList.remove('hidden');
+                    alert('❌ Generation Error: ' + data.error);
+                    initialState.classList.remove('hidden');
                 } else {
                     showResults(data);
                 }
             })
             .catch(error => {
                 loading.classList.add('hidden');
-                alert('[ NETWORK ERROR: ' + error.message + ' ]');
-                inputSection.classList.remove('hidden');
+                alert('❌ Network Error: ' + error.message);
+                initialState.classList.remove('hidden');
             });
         }
 
@@ -369,12 +798,103 @@
             // Display generated image
             document.getElementById('generatedImage').src = data.image_url;
             
+            // Show caption if available, otherwise show filename
+            const captionElement = document.getElementById('audioCaption');
+            if (data.caption) {
+                captionElement.textContent = data.caption;
+            } else {
+                captionElement.textContent = currentAudioFile.name;
+            }
+            
             // Show generation stats
             const generationTime = ((Date.now() - generationStartTime) / 1000).toFixed(1);
             document.getElementById('generationTime').textContent = generationTime + 's';
-            document.getElementById('modelUsed').textContent = data.model_used || selectedModel.toUpperCase();
+            document.getElementById('modelUsed').textContent = (data.model_used || selectedModel).toUpperCase();
             
             results.classList.remove('hidden');
+            
+            // Add to history
+            addToHistory({
+                image: data.image_url,
+                caption: data.caption || currentAudioFile.name,
+                model: selectedModel,
+                time: generationTime,
+                timestamp: new Date().toLocaleTimeString(),
+                audioUrl: URL.createObjectURL(currentAudioFile),
+                audioName: currentAudioFile.name
+            });
+        }
+
+        // History functions
+        function addToHistory(item) {
+            generationHistory.unshift(item); // Add to beginning
+            updateHistoryDisplay();
+        }
+
+        function updateHistoryDisplay() {
+            if (generationHistory.length === 0) {
+                historySection.classList.add('hidden');
+                return;
+            }
+
+            historySection.classList.remove('hidden');
+            historyCount.textContent = `${generationHistory.length} generation${generationHistory.length > 1 ? 's' : ''}`;
+            
+            // Rebuild grid
+            historyGrid.innerHTML = '';
+            
+            generationHistory.forEach((item, index) => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'glass rounded-xl overflow-hidden hover:scale-105 transition-all duration-300 cursor-pointer border border-white/20';
+                historyItem.onclick = () => viewHistoryItem(index);
+                
+                historyItem.innerHTML = `
+                    <div class="relative">
+                        <img src="${item.image}" alt="Generated ${index}" class="w-full h-48 object-cover">
+                        <div class="absolute top-2 right-2 bg-black/80 px-2 py-1 rounded text-xs text-white mono">
+                            ${item.model.toUpperCase()}
+                        </div>
+                    </div>
+                    <div class="p-3 bg-white">
+                        <p class="text-xs text-gray-600 mono truncate mb-2">${item.caption}</p>
+                        ${item.audioUrl ? `
+                            <audio controls class="w-full mb-2" style="height: 32px;">
+                                <source src="${item.audioUrl}" type="audio/wav">
+                            </audio>
+                        ` : ''}
+                        <div class="flex justify-between text-xs text-gray-500 mono">
+                            <span><i class="fas fa-clock mr-1"></i>${item.time}s</span>
+                            <span><i class="fas fa-history mr-1"></i>${item.timestamp}</span>
+                        </div>
+                    </div>
+                `;
+                
+                historyGrid.appendChild(historyItem);
+            });
+        }
+
+        function viewHistoryItem(index) {
+            const item = generationHistory[index];
+            
+            // Update main display with history item
+            document.getElementById('generatedImage').src = item.image;
+            document.getElementById('audioCaption').textContent = item.caption;
+            document.getElementById('generationTime').textContent = item.time + 's';
+            document.getElementById('modelUsed').textContent = item.model.toUpperCase();
+            
+            // Show results section
+            results.classList.remove('hidden');
+            initialState.classList.add('hidden');
+            
+            // Scroll to results
+            results.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function clearHistory() {
+            if (confirm('Clear all generation history?')) {
+                generationHistory = [];
+                updateHistoryDisplay();
+            }
         }
 
         function downloadImage() {
@@ -392,10 +912,10 @@
             audioPreview.classList.add('hidden');
             generateBtn.disabled = true;
             
-            // Show input section
+            // Show initial state (keep input section visible)
             results.classList.add('hidden');
             loading.classList.add('hidden');
-            inputSection.classList.remove('hidden');
+            initialState.classList.remove('hidden');
         }
 
         // Initialize
