@@ -60,14 +60,14 @@ models = {
         'config': None,
         'checkpoint': 'audio2image_mapper_dual_best.pt',
         'module': 'main2',
-        'description': '2HEAD + Larger Dataset + UNET (Best Quality)'
+        'description': 'MLP + UNET'
     },
     'mlponly': {
         'model': None,
         'config': None,
         'checkpoint': 'audio2image_mapper_dual.pt',
         'module': 'mlponly',
-        'description': '2HEAD + Different Dataset + No UNET (Faster)'
+        'description': 'MLP Only'
     }
 }
 

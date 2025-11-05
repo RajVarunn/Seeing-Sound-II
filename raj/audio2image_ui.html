@@ -688,7 +688,19 @@
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 
-                mediaRecorder = new MediaRecorder(stream);
+                // Try to use WAV format for faster processing, fallback to default if not supported
+                let options = {};
+                const mimeTypes = ['audio/wav', 'audio/webm;codecs=pcm', 'audio/webm'];
+                
+                for (const mimeType of mimeTypes) {
+                    if (MediaRecorder.isTypeSupported(mimeType)) {
+                        options.mimeType = mimeType;
+                        console.log('Using MIME type:', mimeType);
+                        break;
+                    }
+                }
+                
+                mediaRecorder = new MediaRecorder(stream, options);
                 audioChunks = [];
                 
                 mediaRecorder.ondataavailable = (event) => {
@@ -696,8 +708,12 @@
                 };
                 
                 mediaRecorder.onstop = () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                    const audioFile = new File([audioBlob], `recording_${Date.now()}.wav`, { type: 'audio/wav' });
+                    // Use the actual MIME type from the MediaRecorder
+                    const mimeType = mediaRecorder.mimeType || 'audio/webm';
+                    const extension = mimeType.includes('wav') ? 'wav' : 'webm';
+                    
+                    const audioBlob = new Blob(audioChunks, { type: mimeType });
+                    const audioFile = new File([audioBlob], `recording_${Date.now()}.${extension}`, { type: mimeType });
                     
                     currentAudioFile = audioFile;
                     showAudioPreview(URL.createObjectURL(audioBlob));
