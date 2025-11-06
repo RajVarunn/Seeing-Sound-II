@@ -337,6 +337,8 @@
                     </div>
 
                     <!-- File Upload Zone -->
+                <!-- Audio Input Section -->
+                <div id="normalInputSection">
                     <div class="mb-6">
                         <label class="block text-gray-800 text-xs font-bold mb-3 mono tracking-widest">[ SELECT AUDIO FILE ]</label>
                         <div class="relative">
@@ -394,20 +396,94 @@
                             </audio>
                         </div>
                     </div>
+                </div>
+
+                <!-- Dream Mode Input Section (hidden by default) -->
+                <div id="dreamInputSection" class="hidden">
+                    <!-- Audio 1 Upload -->
+                    <div class="mb-6">
+                        <label class="block text-gray-800 text-xs font-bold mb-3 mono tracking-widest">[ AUDIO INPUT 1 ]</label>
+                        <div class="relative">
+                            <input type="file" id="dreamAudio1" accept="audio/*" class="hidden">
+                            <button onclick="document.getElementById('dreamAudio1').click()" 
+                                    class="w-full upload-zone rounded-2xl p-8 hover:scale-105 transition-all duration-300 text-center bg-gray-50 border-2 border-dashed border-gray-400">
+                                <div class="icon-bounce">
+                                    <i class="fas fa-music text-4xl text-black mb-3"></i>
+                                </div>
+                                <p class="text-black font-bold text-base mb-1 mono tracking-wide">[ FIRST AUDIO ]</p>
+                                <p class="text-xs text-gray-600 mono">Click to select</p>
+                            </button>
+                        </div>
+                        <div id="dreamPreview1" class="hidden mt-3 neon-border rounded-2xl p-4 bg-white">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-bold text-black mono tracking-wider">
+                                    <i class="fas fa-music text-black mr-2"></i>
+                                    AUDIO 1
+                                </span>
+                            </div>
+                            <audio id="dreamPlayer1" controls class="w-full mb-2"></audio>
+                            <p id="dreamCaption1" class="text-xs text-gray-600 mono truncate"></p>
+                        </div>
+                    </div>
+
+                    <!-- Fusion Symbol -->
+                    <div class="flex items-center justify-center mb-6">
+                        <div class="flex-1 border-t-2 border-gray-300"></div>
+                        <div class="px-4">
+                            <div class="w-12 h-12 bg-black rounded-full flex items-center justify-center shadow-lg pulse-slow">
+                                <i class="fas fa-plus text-white text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="flex-1 border-t-2 border-gray-300"></div>
+                    </div>
+
+                    <!-- Audio 2 Upload -->
+                    <div class="mb-6">
+                        <label class="block text-gray-800 text-xs font-bold mb-3 mono tracking-widest">[ AUDIO INPUT 2 ]</label>
+                        <div class="relative">
+                            <input type="file" id="dreamAudio2" accept="audio/*" class="hidden">
+                            <button onclick="document.getElementById('dreamAudio2').click()"
+                                    class="w-full upload-zone rounded-2xl p-8 hover:scale-105 transition-all duration-300 text-center bg-gray-50 border-2 border-dashed border-gray-400">
+                                <div class="icon-bounce" style="animation-delay: 0.3s;">
+                                    <i class="fas fa-music text-4xl text-black mb-3"></i>
+                                </div>
+                                <p class="text-black font-bold text-base mb-1 mono tracking-wide">[ SECOND AUDIO ]</p>
+                                <p class="text-xs text-gray-600 mono">Click to select</p>
+                            </button>
+                        </div>
+                        <div id="dreamPreview2" class="hidden mt-3 neon-border rounded-2xl p-4 bg-white">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-bold text-black mono tracking-wider">
+                                    <i class="fas fa-music text-black mr-2"></i>
+                                    AUDIO 2
+                                </span>
+                            </div>
+                            <audio id="dreamPlayer2" controls class="w-full mb-2"></audio>
+                            <p id="dreamCaption2" class="text-xs text-gray-600 mono truncate"></p>
+                        </div>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="flex items-center mb-6">
+                        <div class="flex-1 border-t-2 border-gray-300"></div>
+                        <span class="px-4 text-gray-500 font-bold mono text-sm">FUSION MODE</span>
+                        <div class="flex-1 border-t-2 border-gray-300"></div>
+                    </div>
+                </div>
 
                     <!-- Model Selection -->
                     <div class="mb-6">
                         <label class="block text-gray-800 text-xs font-bold mb-3 mono tracking-widest">[ CHOOSE MODEL ]</label>
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-3 gap-4">
                             <div onclick="selectModel('unet')" id="modelUnet"
                                     class="model-card glass rounded-2xl p-6 active cursor-pointer">
                                 <div class="text-center">
                                     <div class="w-16 h-16 bg-white rounded-lg mx-auto mb-3 flex items-center justify-center shadow-lg border-2 border-gray-300">
                                         <i class="fas fa-star text-black text-2xl"></i>
                                     </div>
-                                    <h3 class="text-lg font-bold text-white mb-1 mono tracking-wide">UNET MODEL</h3>
-                                    <p class="text-xs text-gray-300 mb-2 mono">Trained on VGG Dataset</p>
-                                    <span class="inline-block px-3 py-1 bg-white text-black rounded text-xs font-bold mono">BEST QUALITY</span>
+                                    <h3 class="text-lg font-bold text-white mb-1 mono tracking-wide">UNET</h3>
+                                    <p class="text-xs text-gray-300 mb-2 mono">VGG Dataset</p>
+                                    <span class="inline-block px-3 py-1 bg-white text-black rounded text-xs font-bold mono">BEST</span>
                                 </div>
                             </div>
                             <div onclick="selectModel('mlponly')" id="modelmlponly"
@@ -416,19 +492,30 @@
                                     <div class="w-16 h-16 bg-white rounded-lg mx-auto mb-3 flex items-center justify-center shadow-lg border-2 border-gray-300">
                                         <i class="fas fa-bolt text-black text-2xl"></i>
                                     </div>
-                                    <h3 class="text-lg font-bold text-white mb-1 mono tracking-wide">MLP Only</h3>
-                                    <p class="text-xs text-gray-300 mb-2 mono">Trained on VGG Dataset</p>
-                                    <span class="inline-block px-3 py-1 bg-white text-black rounded text-xs font-bold mono">FASTER</span>
+                                    <h3 class="text-lg font-bold text-white mb-1 mono tracking-wide">MLP</h3>
+                                    <p class="text-xs text-gray-300 mb-2 mono">VGG Dataset</p>
+                                    <span class="inline-block px-3 py-1 bg-white text-black rounded text-xs font-bold mono">FAST</span>
+                                </div>
+                            </div>
+                            <div onclick="selectModel('dream')" id="modelDream"
+                                    class="model-card glass rounded-2xl p-6 cursor-pointer">
+                                <div class="text-center">
+                                    <div class="w-16 h-16 bg-white rounded-lg mx-auto mb-3 flex items-center justify-center shadow-lg border-2 border-gray-300">
+                                        <i class="fas fa-moon text-black text-2xl"></i>
+                                    </div>
+                                    <h3 class="text-lg font-bold text-white mb-1 mono tracking-wide">DREAM</h3>
+                                    <p class="text-xs text-gray-300 mb-2 mono">Fusion Mode</p>
+                                    <span class="inline-block px-3 py-1 bg-white text-black rounded text-xs font-bold mono">2 AUDIO</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Generate Button -->
-                    <button id="generateBtn" onclick="generateImage()" 
+                    <button id="generateBtn" onclick="handleGenerate()" 
                             class="w-full btn-gradient py-5 rounded-2xl text-white font-bold text-lg shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none mono tracking-widest">
-                        <i class="fas fa-magic mr-3"></i>
-                        [ GENERATE IMAGE ]
+                        <i id="generateIcon" class="fas fa-magic mr-3"></i>
+                        <span id="generateText">[ GENERATE IMAGE ]</span>
                         <i class="fas fa-arrow-right ml-3"></i>
                     </button>
                 </div>
@@ -641,6 +728,10 @@
         let recordingTimer = null;
         let isRecording = false;
         
+        // Dream mode variables
+        let dreamAudio1 = null;
+        let dreamAudio2 = null;
+        
         // History tracking
         let generationHistory = [];
 
@@ -667,13 +758,45 @@
         function selectModel(modelType) {
             selectedModel = modelType;
             
-            // Update UI
+            // Update UI for all model cards
             document.querySelectorAll('.model-card').forEach(card => {
                 card.classList.remove('active');
             });
             
-            const selectedCard = document.getElementById(modelType === 'unet' ? 'modelUnet' : 'modelmlponly');
-            selectedCard.classList.add('active');
+            // Activate selected card
+            const cardIds = {
+                'unet': 'modelUnet',
+                'mlponly': 'modelmlponly',
+                'dream': 'modelDream'
+            };
+            const selectedCard = document.getElementById(cardIds[modelType]);
+            if (selectedCard) {
+                selectedCard.classList.add('active');
+            }
+            
+            // Show/hide appropriate input sections
+            const normalInput = document.getElementById('normalInputSection');
+            const dreamInput = document.getElementById('dreamInputSection');
+            const generateIcon = document.getElementById('generateIcon');
+            const generateText = document.getElementById('generateText');
+            
+            if (modelType === 'dream') {
+                normalInput.classList.add('hidden');
+                dreamInput.classList.remove('hidden');
+                generateIcon.className = 'fas fa-wand-magic-sparkles mr-3';
+                generateText.textContent = '[ GENERATE FUSION ]';
+                
+                // Enable button only if both audios are uploaded
+                generateBtn.disabled = !(dreamAudio1 && dreamAudio2);
+            } else {
+                normalInput.classList.remove('hidden');
+                dreamInput.classList.add('hidden');
+                generateIcon.className = 'fas fa-magic mr-3';
+                generateText.textContent = '[ GENERATE IMAGE ]';
+                
+                // Enable button if audio is uploaded
+                generateBtn.disabled = !currentAudioFile;
+            }
             
             console.log('Model selected:', modelType);
         }
@@ -790,6 +913,96 @@
             }
         }
 
+        // Dream Mode Functions
+        document.getElementById('dreamAudio1')?.addEventListener('change', function(e) {
+            handleDreamAudio(1, e.target);
+        });
+        
+        document.getElementById('dreamAudio2')?.addEventListener('change', function(e) {
+            handleDreamAudio(2, e.target);
+        });
+        
+        function handleDreamAudio(audioNum, input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const preview = document.getElementById(`dreamPreview${audioNum}`);
+            const player = document.getElementById(`dreamPlayer${audioNum}`);
+            const caption = document.getElementById(`dreamCaption${audioNum}`);
+            
+            // Store file
+            if (audioNum === 1) {
+                dreamAudio1 = file;
+            } else {
+                dreamAudio2 = file;
+            }
+            
+            // Show preview
+            const url = URL.createObjectURL(file);
+            player.src = url;
+            preview.classList.remove('hidden');
+            caption.textContent = `${file.name} • ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+            
+            // Enable generate button if both audios uploaded
+            if (dreamAudio1 && dreamAudio2) {
+                generateBtn.disabled = false;
+            }
+        }
+
+        function handleGenerate() {
+            if (selectedModel === 'dream') {
+                generateDreamFusion();
+            } else {
+                generateImage();
+            }
+        }
+
+        async function generateDreamFusion() {
+            if (!dreamAudio1 || !dreamAudio2) {
+                alert('⚠️ Please upload both audio files');
+                return;
+            }
+            
+            // Show loading
+            generationStartTime = Date.now();
+            initialState.classList.add('hidden');
+            loading.classList.remove('hidden');
+            results.classList.add('hidden');
+            
+            const formData = new FormData();
+            formData.append('audio1', dreamAudio1);
+            formData.append('audio2', dreamAudio2);
+            formData.append('fusion_mode', 'blend'); // Always use blend mode
+            formData.append('blend_ratio', '0.5'); // Not used but sent for compatibility
+            
+            try {
+                const response = await fetch('/generate_fusion', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert('❌ Error: ' + data.error);
+                    initialState.classList.remove('hidden');
+                    loading.classList.add('hidden');
+                    return;
+                }
+                
+                const generationTime = ((Date.now() - generationStartTime) / 1000).toFixed(2);
+                
+                // Show results
+                showResults(data, generationTime);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Error generating fusion: ' + error.message);
+                initialState.classList.remove('hidden');
+                loading.classList.add('hidden');
+            }
+        }
+
         function generateImage() {
             if (!currentAudioFile) {
                 alert('⚠️ Please upload an audio file first');
@@ -829,35 +1042,54 @@
             });
         }
 
-        function showResults(data) {
+        function showResults(data, genTime) {
             // Display generated image
             document.getElementById('generatedImage').src = data.image_url;
             
-            // Show caption if available, otherwise show filename
+            // Show caption if available
             const captionElement = document.getElementById('audioCaption');
             if (data.caption) {
                 captionElement.textContent = data.caption;
+            } else if (selectedModel === 'dream') {
+                captionElement.textContent = `Fusion of ${dreamAudio1?.name || 'Audio 1'} + ${dreamAudio2?.name || 'Audio 2'}`;
             } else {
-                captionElement.textContent = currentAudioFile.name;
+                captionElement.textContent = currentAudioFile?.name || 'Generated Image';
             }
             
             // Show generation stats
-            const generationTime = ((Date.now() - generationStartTime) / 1000).toFixed(1);
+            const generationTime = genTime || ((Date.now() - generationStartTime) / 1000).toFixed(1);
             document.getElementById('generationTime').textContent = generationTime + 's';
             document.getElementById('modelUsed').textContent = (data.model_used || selectedModel).toUpperCase();
             
+            // Hide loading, show results
+            loading.classList.add('hidden');
             results.classList.remove('hidden');
             
-            // Add to history
-            addToHistory({
+            // Add to history with appropriate audio
+            let historyItem = {
                 image: data.image_url,
-                caption: data.caption || currentAudioFile.name,
+                caption: data.caption || captionElement.textContent,
                 model: selectedModel,
                 time: generationTime,
-                timestamp: new Date().toLocaleTimeString(),
-                audioUrl: URL.createObjectURL(currentAudioFile),
-                audioName: currentAudioFile.name
-            });
+                timestamp: new Date().toLocaleTimeString()
+            };
+            
+            // Add audio URLs based on mode
+            if (selectedModel === 'dream') {
+                if (dreamAudio1) {
+                    historyItem.audioUrl = URL.createObjectURL(dreamAudio1);
+                    historyItem.audioName = dreamAudio1.name;
+                }
+                if (dreamAudio2) {
+                    historyItem.audioUrl2 = URL.createObjectURL(dreamAudio2);
+                    historyItem.audioName2 = dreamAudio2.name;
+                }
+            } else if (currentAudioFile) {
+                historyItem.audioUrl = URL.createObjectURL(currentAudioFile);
+                historyItem.audioName = currentAudioFile.name;
+            }
+            
+            addToHistory(historyItem);
         }
 
         // History functions

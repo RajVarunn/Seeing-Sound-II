@@ -68,6 +68,13 @@ models = {
         'checkpoint': 'audio2image_mapper_dual_mlp_only_best.pt',
         'module': 'mlponly',
         'description': 'MLP Only'
+    },
+    'dream': {
+        'model': None,
+        'config': None,
+        'checkpoint': 'audio2image_mapper_dual_best.pt',
+        'module': 'main_dream_mode',
+        'description': 'Dream Fusion - Combine Two Audios'
     }
 }
 
@@ -85,8 +92,12 @@ def load_model(model_type='unet'):
     # Import the correct module
     if model_info['module'] == 'main2':
         from main2 import Audio2ImageModel, Config
-    else:
+    elif model_info['module'] == 'mlponly':
         from mlponly import Audio2ImageModel, Config
+    elif model_info['module'] == 'main_dream_mode':
+        from main_dream_mode import DreamFusionModel as Audio2ImageModel, DreamConfig as Config
+    else:
+        raise ValueError(f"Unknown module: {model_info['module']}")
     
     config = Config()
     config.ckpt_path = model_info['checkpoint']
@@ -199,6 +210,123 @@ def generate_image():
             
     except Exception as e:
         print(f"Error generating image: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/generate_fusion', methods=['POST'])
+def generate_fusion():
+    """Generate fusion image from TWO audio files (Dream Mode)"""
+    try:
+        if 'audio1' not in request.files or 'audio2' not in request.files:
+            return jsonify({'error': 'Two audio files required for fusion mode'}), 400
+        
+        audio_file1 = request.files['audio1']
+        audio_file2 = request.files['audio2']
+        
+        if audio_file1.filename == '' or audio_file2.filename == '':
+            return jsonify({'error': 'Both audio files must be selected'}), 400
+        
+        fusion_mode = request.form.get('fusion_mode', 'blend')
+        blend_ratio = float(request.form.get('blend_ratio', 0.5))
+        
+        # Load dream model if not already loaded
+        if models['dream']['model'] is None:
+            print("Loading dream model...")
+            load_model('dream')
+        
+        model = models['dream']['model']
+        config = models['dream']['config']
+        
+        # Save both audio files temporarily
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp1:
+            audio_file1.save(tmp1.name)
+            temp_path1 = tmp1.name
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp2:
+            audio_file2.save(tmp2.name)
+            temp_path2 = tmp2.name
+        
+        try:
+            # Load and process both audios
+            print(f"Processing audio 1: {audio_file1.filename}")
+            wav1, sr1 = torchaudio.load(temp_path1)
+            if wav1.size(0) > 1:
+                wav1 = wav1.mean(dim=0, keepdim=True)
+            wav1 = wav1.squeeze(0).float()
+            
+            if sr1 != 48000:
+                print(f"Resampling audio 1 from {sr1}Hz to 48000Hz")
+                resampler = torchaudio.transforms.Resample(sr1, 48000)
+                wav1 = resampler(wav1)
+                sr1 = 48000
+            
+            wav1 = wav1.to(config.device)
+            
+            print(f"Processing audio 2: {audio_file2.filename}")
+            wav2, sr2 = torchaudio.load(temp_path2)
+            if wav2.size(0) > 1:
+                wav2 = wav2.mean(dim=0, keepdim=True)
+            wav2 = wav2.squeeze(0).float()
+            
+            if sr2 != 48000:
+                print(f"Resampling audio 2 from {sr2}Hz to 48000Hz")
+                resampler = torchaudio.transforms.Resample(sr2, 48000)
+                wav2 = resampler(wav2)
+                sr2 = 48000
+            
+            wav2 = wav2.to(config.device)
+            
+            # Get captions for both audios
+            caption1 = get_caption_for_audio(audio_file1.filename)
+            caption2 = get_caption_for_audio(audio_file2.filename)
+            
+            # Update fusion config
+            config.fusion_mode = fusion_mode
+            config.blend_ratio = blend_ratio
+            
+            # Generate fusion image
+            print(f"Generating fusion image (mode: {fusion_mode}, ratio: {blend_ratio})...")
+            with torch.no_grad():
+                generated_image = model.generate_fusion(
+                    wav1, sr1, wav2, sr2, 
+                    caption1, caption2
+                )
+            
+            # Convert PIL image to base64
+            buffered = BytesIO()
+            generated_image.save(buffered, format="PNG")
+            img_str = base64.b64encode(buffered.getvalue()).decode()
+            
+            # Clean up temp files
+            os.unlink(temp_path1)
+            os.unlink(temp_path2)
+            
+            # Create fusion caption
+            fusion_caption = f"Fusion: {caption1 or audio_file1.filename} + {caption2 or audio_file2.filename}"
+            
+            return jsonify({
+                'success': True,
+                'image_url': f'data:image/png;base64,{img_str}',
+                'model_used': models['dream']['description'],
+                'caption': fusion_caption,
+                'caption1': caption1 or audio_file1.filename,
+                'caption2': caption2 or audio_file2.filename,
+                'fusion_mode': fusion_mode,
+                'blend_ratio': blend_ratio,
+                'filename': f"fusion_{audio_file1.filename}_{audio_file2.filename}"
+            })
+            
+        except Exception as e:
+            # Clean up temp files on error
+            if os.path.exists(temp_path1):
+                os.unlink(temp_path1)
+            if os.path.exists(temp_path2):
+                os.unlink(temp_path2)
+            raise e
+            
+    except Exception as e:
+        print(f"Error generating fusion: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/health')
