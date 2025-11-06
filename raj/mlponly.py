@@ -13,6 +13,8 @@ Key features:
 import os, math, csv, random, sys
 from typing import List, Tuple
 from dataclasses import dataclass
+import zipfile
+from io import BytesIO
 
 import torch
 import torch.nn as nn
@@ -21,7 +23,7 @@ import torchaudio
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 
-from transformers import AutoProcessor, ClapModel, AutoTokenizer
+from transformers import AutoProcessor, ClapModel, AutoTokenizer, CLIPProcessor, CLIPModel
 from diffusers import StableDiffusionPipeline
 from PIL import Image
 
@@ -33,6 +35,8 @@ from PIL import Image
 class Config:
     CLAP_ID: str = "laion/clap-htsat-fused"
     SD_ID: str   = "runwayml/stable-diffusion-v1-5"
+    CLIP_ID: str = "openai/clip-vit-base-patch32"
+    
     device: str = "mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu")
     lr: float = 2e-4
     weight_decay: float = 1e-4
@@ -44,7 +48,16 @@ class Config:
     base_prompt: str = "A photo of"
     guidance: float = 7.5
     steps: int = 30
+    
+    # Evaluation settings
+    eval_every_n_epochs: int = 1
+    num_eval_samples: int = 4
+    save_eval_images: bool = True
+    
+    # Dataset settings
     train_csv: str = "/Users/rajvarun/Desktop/SIT/Trimester 4/AAI 3001 - Computer Vision & Deep Learning/Seeing Sound II/extracted_audiocaps/captions.txt"
+    audio_folder: str = None  # If None, uses directory of train_csv
+    use_zip_files: bool = False  # Set to True to read audio from ZIP files
     ckpt_path: str = "audio2image_mapper_dual.pt"
 
 
@@ -52,36 +65,144 @@ class Config:
 #  Dataset
 # ========================
 class AudioCaptionDataset(Dataset):
-    """Reads a tab-separated file of (audio_path, caption)."""
-    def __init__(self, captions_path: str):
+    """Reads a CSV file with format: base_folder,image_file,audio_file,caption"""
+    def __init__(self, captions_path: str, audio_folder: str = None, use_zip_files: bool = False):
         self.items = []
+        self.use_zip_files = use_zip_files
+        self.zip_handles = {}
+        
         base_dir = os.path.dirname(captions_path)
+        self.audio_folder = audio_folder if audio_folder else base_dir
+        
+        print(f"Loading dataset from: {captions_path}")
+        print(f"Base directory: {base_dir}")
+        print(f"Audio folder: {self.audio_folder}")
+        print(f"Use ZIP files: {use_zip_files}")
+        
+        # If using ZIP files, find and open them
+        if use_zip_files:
+            self._find_zip_files()
+        
         with open(captions_path, "r", encoding="utf-8") as f:
-            for line in f:
+            # Skip header row
+            header = next(f)
+            print(f"Skipped header: {header.strip()}")
+            
+            for line_num, line in enumerate(f, start=2):
                 line = line.strip()
-                if line:
-                    parts = line.split("\t")
-                    if len(parts) >= 2:
-                        filename = parts[0]
-                        caption = parts[1]
-                        audio_path = os.path.join(base_dir, filename)
+                if not line:
+                    continue
+                
+                # Split by comma (CSV format)
+                parts = line.split(",")
+                
+                if len(parts) >= 4:
+                    base_folder = parts[0]  # e.g., "vggsound_00"
+                    # image_file = parts[1]  # Not needed for MLP-only training
+                    audio_file = parts[2]   # e.g., "g-f_I2yQ_000001.wav"
+                    caption = parts[3]      # e.g., "people marching"
+                    
+                    # Build path to audio
+                    if use_zip_files:
+                        # Path inside ZIP: vggsound_00/audio/filename.wav
+                        audio_path = f"{base_folder}/audio/{audio_file}"
+                        
+                        # Check if file exists in ZIP
+                        if self._file_in_zip(base_folder, audio_path):
+                            self.items.append((base_folder, audio_path, caption))
+                        elif line_num <= 5:
+                            print(f"  Warning: Audio not found in ZIP at line {line_num}: {audio_path}")
+                    else:
+                        # Path on disk: base_dir/vggsound_00/audio/filename.wav
+                        audio_path = os.path.join(self.audio_folder, base_folder, "audio", audio_file)
+                        
+                        # Check if audio exists on disk
                         if os.path.exists(audio_path):
-                            self.items.append((audio_path, caption))
+                            self.items.append((base_folder, audio_path, caption))
+                        elif line_num <= 5:
+                            print(f"  Warning: Audio not found at line {line_num}: {audio_path}")
+                else:
+                    if line_num <= 5:
+                        print(f"  Warning: Invalid line {line_num} (expected 4 columns, got {len(parts)})")
+        
         if not self.items:
-            raise ValueError("Empty dataset: no valid audio files found")
+            error_msg = "Empty dataset: no valid audio files found.\n"
+            if use_zip_files:
+                error_msg += f"Expected audio in ZIP files: {self.audio_folder}/vggsound_XX.zip\n"
+                error_msg += "Check that ZIP files exist and contain audio files at: vggsound_XX/audio/*.wav"
+            else:
+                error_msg += f"Expected audio structure: {self.audio_folder}/vggsound_XX/audio/*.wav\n"
+                error_msg += "Please extract audio files from ZIP archives first."
+            raise ValueError(error_msg)
+        
+        print(f"✓ Loaded {len(self.items)} audio-caption pairs")
+    
+    def _find_zip_files(self):
+        """Find and open ZIP files in the audio_folder"""
+        print("Searching for ZIP files...")
+        
+        for item in os.listdir(self.audio_folder):
+            if item.endswith('.zip'):
+                # Extract base name (e.g., "vggsound_00.zip" → "vggsound_00")
+                zip_name = item.replace('.zip', '')
+                zip_path = os.path.join(self.audio_folder, item)
+                
+                try:
+                    # Open ZIP file and keep it in memory
+                    self.zip_handles[zip_name] = zipfile.ZipFile(zip_path, 'r')
+                    
+                    file_count = len(self.zip_handles[zip_name].namelist())
+                    print(f"  ✓ Opened {item} (key: '{zip_name}', {file_count} files)")
+                except Exception as e:
+                    print(f"  ✗ Failed to open {item}: {e}")
+    
+    def _file_in_zip(self, base_folder, file_path):
+        """Check if a file exists in the corresponding ZIP"""
+        if base_folder not in self.zip_handles:
+            return False
+        
+        try:
+            self.zip_handles[base_folder].getinfo(file_path)
+            return True
+        except KeyError:
+            return False
+    
+    def _read_from_zip(self, base_folder, file_path):
+        """Read a file from ZIP archive"""
+        if base_folder in self.zip_handles:
+            return self.zip_handles[base_folder].read(file_path)
+        return None
 
     def __len__(self): return len(self.items)
 
     def __getitem__(self, idx: int):
-        path, cap = self.items[idx]
-        wav, sr = torchaudio.load(path)
+        if self.use_zip_files:
+            # Load from ZIP
+            base_folder, audio_path, cap = self.items[idx]
+            
+            # Read audio bytes from ZIP
+            audio_bytes = self._read_from_zip(base_folder, audio_path)
+            
+            if audio_bytes is None:
+                raise FileNotFoundError(f"Audio not found in ZIP: {audio_path}")
+            
+            # Load audio from bytes
+            wav, sr = torchaudio.load(BytesIO(audio_bytes))
+        else:
+            # Load from disk
+            base_folder, path, cap = self.items[idx]
+            wav, sr = torchaudio.load(path)
+        
+        # Convert to mono if needed
         if wav.size(0) > 1:
             wav = wav.mean(dim=0, keepdim=True)
         wav = wav.squeeze(0).float()
+        
         # Resample to 48kHz for CLAP
         if sr != 48000:
             resampler = torchaudio.transforms.Resample(sr, 48000)
             wav = resampler(wav)
+        
         return wav, 48000, cap
 
 def collate_audio(batch):
@@ -186,6 +307,13 @@ class Audio2ImageModel(nn.Module):
                 p.requires_grad = False
             
             self.sd_hidden = self.sd_text_encoder.config.hidden_size
+
+        # -------- Frozen CLIP for evaluation --------
+        print("Loading CLIP model for evaluation...")
+        self.clip_model = CLIPModel.from_pretrained(cfg.CLIP_ID).eval().to(device)
+        for p in self.clip_model.parameters():
+            p.requires_grad = False
+        self.clip_processor = CLIPProcessor.from_pretrained(cfg.CLIP_ID)
 
         # -------- Get CLAP dims --------
         dummy_text = ["test"]
@@ -358,19 +486,93 @@ class Audio2ImageModel(nn.Module):
         
         return img
 
+    # --- CLIP Evaluation ---
+    @torch.inference_mode()
+    def evaluate_generation(self, wavs, sr, captions, num_samples=4):
+        """
+        Generate images from audio and evaluate with CLIP.
+        
+        Args:
+            wavs: List of audio waveforms
+            sr: Sampling rate
+            captions: List of text captions
+            num_samples: Number of samples to evaluate
+            
+        Returns:
+            avg_clip_score: Average CLIP similarity score
+            generated_images: List of generated PIL images
+            clip_scores: List of individual CLIP scores
+        """
+        if self.sd_pipe is None:
+            raise RuntimeError("Stable Diffusion not loaded. Init with load_sd=True.")
+        
+        generated_images = []
+        clip_scores = []
+        
+        # Generate images for subset
+        for i in range(min(num_samples, len(wavs))):
+            # Generate image
+            img = self.generate(wavs[i], sr)
+            generated_images.append(img)
+            
+            # Compute CLIP similarity
+            inputs = self.clip_processor(
+                text=[captions[i]], 
+                images=[img],
+                return_tensors="pt", 
+                padding=True
+            ).to(self.cfg.device)
+            
+            outputs = self.clip_model(**inputs)
+            logits_per_image = outputs.logits_per_image
+            clip_score = logits_per_image.item()
+            clip_scores.append(clip_score)
+        
+        avg_clip_score = sum(clip_scores) / len(clip_scores) if clip_scores else 0.0
+        
+        return avg_clip_score, generated_images, clip_scores
+
 
 # ========================
 #  Training
 # ========================
 def train(cfg: Config):
-    ds = AudioCaptionDataset(cfg.train_csv)
-    loader = DataLoader(
-        ds, 
+    # Load full dataset
+    full_ds = AudioCaptionDataset(
+        captions_path=cfg.train_csv,
+        audio_folder=cfg.audio_folder,
+        use_zip_files=cfg.use_zip_files
+    )
+    
+    # Create train/validation split (90/10)
+    train_size = int(0.9 * len(full_ds))
+    val_size = len(full_ds) - train_size
+    train_ds, val_ds = torch.utils.data.random_split(
+        full_ds,
+        [train_size, val_size],
+        generator=torch.Generator().manual_seed(42)  # For reproducibility
+    )
+    
+    print(f"\nDataset split:")
+    print(f"  Training: {len(train_ds)} samples")
+    print(f"  Validation: {len(val_ds)} samples\n")
+    
+    # Create dataloaders
+    train_loader = DataLoader(
+        train_ds,
         batch_size=cfg.batch_size, 
         shuffle=True,
         collate_fn=collate_audio,
-        num_workers=0,  # Set to 0 for debugging
-        drop_last=True  # Drop last incomplete batch to avoid batch_size=1
+        num_workers=0,
+        drop_last=True
+    )
+    
+    val_loader = DataLoader(
+        val_ds,
+        batch_size=cfg.batch_size,
+        shuffle=False,
+        collate_fn=collate_audio,
+        num_workers=0
     )
     
     model = Audio2ImageModel(cfg, load_sd=False).to(cfg.device)
@@ -380,19 +582,23 @@ def train(cfg: Config):
         weight_decay=cfg.weight_decay
     )
 
+    # Track best model
+    best_clip_score = -float('inf')
+
     print(f"\n{'='*60}")
     print(f"Starting Multi-Task Training")
     print(f"{'='*60}")
-    print(f"Dataset: {len(ds)} samples")
+    print(f"Dataset: {len(full_ds)} samples ({len(train_ds)} train, {len(val_ds)} val)")
     print(f"Batch size: {cfg.batch_size}")
     print(f"Epochs: {cfg.max_epochs}")
     print(f"CLAP loss weight: {cfg.clap_loss_weight}")
     print(f"SD loss weight: {cfg.sd_loss_weight}")
+    print(f"Evaluation every: {cfg.eval_every_n_epochs} epochs")
     print(f"{'='*60}\n")
     
     for ep in range(1, cfg.max_epochs + 1):
         model.train()
-        pbar = tqdm(loader, desc=f"Epoch {ep}/{cfg.max_epochs}")
+        pbar = tqdm(train_loader, desc=f"Epoch {ep}/{cfg.max_epochs}")
         
         epoch_loss = 0
         epoch_clap_loss = 0
@@ -425,7 +631,7 @@ def train(cfg: Config):
             })
         
         # Compute epoch averages
-        n = len(loader)
+        n = len(train_loader)
         avg_loss = epoch_loss / n
         avg_clap_loss = epoch_clap_loss / n
         avg_sd_loss = epoch_sd_loss / n
@@ -439,7 +645,7 @@ def train(cfg: Config):
         print(f"  SD Loss: {avg_sd_loss:.4f} | SD Sim: {avg_sd_sim:.3f}")
         print(f"{'='*60}\n")
         
-        # Save checkpoint
+        # Save checkpoint after every epoch
         checkpoint = {
             "mapper": model.mapper.state_dict(),
             "epoch": ep,
@@ -455,9 +661,86 @@ def train(cfg: Config):
         }
         
         torch.save(checkpoint, cfg.ckpt_path)
-        print(f"Checkpoint saved to {cfg.ckpt_path}\n")
+        print(f"Checkpoint saved to {cfg.ckpt_path}")
+        
+        # Run evaluation if it's time
+        if ep % cfg.eval_every_n_epochs == 0:
+            print(f"\n{'='*60}")
+            print(f"🔍 Running CLIP Evaluation at Epoch {ep}")
+            print(f"{'='*60}")
+            
+            # Create evaluation model with SD loaded
+            eval_model = Audio2ImageModel(cfg, load_sd=True).to(cfg.device)
+            eval_model.mapper.load_state_dict(checkpoint["mapper"])
+            eval_model.eval()
+            
+            # Evaluate on validation set (limit to save time)
+            val_clip_scores = []
+            all_gen_images = []
+            all_captions = []
+            
+            eval_batches = min(3, len(val_loader))  # Max 3 batches
+            
+            print(f"Evaluating on validation set ({eval_batches} batches)...")
+            for batch_idx, (wavs, sr, caps) in enumerate(val_loader):
+                if batch_idx >= eval_batches:
+                    break
+                
+                wavs = [w.to(cfg.device) for w in wavs]
+                
+                # Generate images and compute CLIP scores
+                avg_score, gen_imgs, scores = eval_model.evaluate_generation(
+                    wavs, sr, caps,
+                    num_samples=min(cfg.num_eval_samples, len(wavs))
+                )
+                
+                val_clip_scores.extend(scores)
+                all_gen_images.extend(gen_imgs)
+                all_captions.extend(caps[:len(gen_imgs)])
+                
+                print(f"  Batch {batch_idx + 1}/{eval_batches}: Avg CLIP = {avg_score:.3f}")
+            
+            # Compute overall validation CLIP score
+            avg_val_clip = sum(val_clip_scores) / len(val_clip_scores) if val_clip_scores else 0.0
+            
+            print(f"\nCLIP Evaluation Results:")
+            print(f"  Average CLIP Score: {avg_val_clip:.4f}")
+            print(f"  Evaluated {len(val_clip_scores)} samples from validation set")
+            
+            # Save example images from evaluation
+            if cfg.save_eval_images and all_gen_images:
+                os.makedirs("eval_images", exist_ok=True)
+                for i in range(min(4, len(all_gen_images))):
+                    img = all_gen_images[i]
+                    cap = all_captions[i]
+                    score = val_clip_scores[i]
+                    img_path = f"eval_images/epoch{ep}_sample{i+1}_score{score:.2f}.png"
+                    img.save(img_path)
+                    print(f"    Sample {i+1}: '{cap[:50]}...' | CLIP: {score:.3f}")
+                    print(f"      Saved to: {img_path}")
+            
+            # Update best model if improved
+            if avg_val_clip > best_clip_score:
+                best_clip_score = avg_val_clip
+                best_ckpt_path = cfg.ckpt_path.replace('.pt', '_best.pt')
+                checkpoint['best_clip_score'] = best_clip_score
+                torch.save(checkpoint, best_ckpt_path)
+                print(f"\n🎯 New best model! CLIP Score: {best_clip_score:.4f}")
+                print(f"   Saved to: {best_ckpt_path}")
+            else:
+                print(f"\n   Best CLIP Score so far: {best_clip_score:.4f}")
+            
+            print(f"{'='*60}\n")
+            
+            # Clean up evaluation model
+            del eval_model
+            if cfg.device == "cuda":
+                torch.cuda.empty_cache()
+            elif cfg.device == "mps":
+                torch.mps.empty_cache()
     
     print("Training completed!")
+    print(f"Best CLIP Score: {best_clip_score:.4f}")
 
 
 # ========================
@@ -494,7 +777,7 @@ def infer(cfg: Config, wav_path: str, out_path: str):
     print(f"  SD Sim: {ckpt.get('sd_sim', 'N/A'):.3f}")
     
     # Generate image
-    print("\nGenerating image...")
+    print("\nGenerating image...") 
     img = model.generate(wav, sr)
     img.save(out_path)
     print(f"✓ Generated image saved to {out_path}")
