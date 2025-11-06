@@ -65,7 +65,7 @@ models = {
     'mlponly': {
         'model': None,
         'config': None,
-        'checkpoint': 'audio2image_mapper_dual.pt',
+        'checkpoint': 'audio2image_mapper_dual_mlp_only_best.pt',
         'module': 'mlponly',
         'description': 'MLP Only'
     }
