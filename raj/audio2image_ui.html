@@ -1066,14 +1066,24 @@
             results.classList.remove('hidden');
             
             // Add to history with appropriate audio
+            // For single-audio modes (UNET/MLP) only store one audio and avoid storing a caption
+            // that exactly matches the audio filename to prevent duplicate labels in the UI.
+            let captionValue = '';
+            if (selectedModel === 'dream') {
+                captionValue = data.caption || `Fusion of ${dreamAudio1?.name || 'Audio 1'} + ${dreamAudio2?.name || 'Audio 2'}`;
+            } else {
+                // If the server returned a caption that is different from the audio filename, keep it.
+                captionValue = (data.caption && currentAudioFile && data.caption !== currentAudioFile.name) ? data.caption : '';
+            }
+
             let historyItem = {
                 image: data.image_url,
-                caption: data.caption || captionElement.textContent,
+                caption: captionValue,
                 model: selectedModel,
                 time: generationTime,
                 timestamp: new Date().toLocaleTimeString()
             };
-            
+
             // Add audio URLs based on mode
             if (selectedModel === 'dream') {
                 if (dreamAudio1) {
@@ -1085,8 +1095,12 @@
                     historyItem.audioName2 = dreamAudio2.name;
                 }
             } else if (currentAudioFile) {
+                // Single-audio mode: only store one audio field
                 historyItem.audioUrl = URL.createObjectURL(currentAudioFile);
                 historyItem.audioName = currentAudioFile.name;
+                // Ensure no second audio fields remain
+                historyItem.audioUrl2 = undefined;
+                historyItem.audioName2 = undefined;
             }
             
             addToHistory(historyItem);
@@ -1112,7 +1126,8 @@
             
             generationHistory.forEach((item, index) => {
                 const historyItem = document.createElement('div');
-                historyItem.className = 'glass rounded-xl overflow-hidden hover:scale-105 transition-all duration-300 cursor-pointer border border-white/20';
+                // Use a white card background for history items so the lower content area doesn't appear grey
+                historyItem.className = 'bg-white rounded-xl overflow-hidden hover:scale-105 transition-all duration-300 cursor-pointer border border-white/20';
                 historyItem.onclick = () => viewHistoryItem(index);
                 
                 historyItem.innerHTML = `
@@ -1123,12 +1138,25 @@
                         </div>
                     </div>
                     <div class="p-3 bg-white">
-                        <p class="text-xs text-gray-600 mono truncate mb-2">${item.caption}</p>
+                        ${(item.caption && item.caption !== item.audioName && item.caption !== item.audioName2) ? `
+                                    <p class="text-xs text-gray-600 mono truncate mb-2">${item.caption}</p>
+                                ` : ''}
                         ${item.audioUrl ? `
-                            <audio controls class="w-full mb-2" style="height: 32px;">
-                                <source src="${item.audioUrl}" type="audio/wav">
-                            </audio>
-                        ` : ''}
+                                    <div class="mb-2">
+                                        <p class="text-xs text-gray-500 mono truncate mb-1">${item.audioName || ''}</p>
+                                        <audio controls class="w-full mb-2" style="height: 32px;">
+                                            <source src="${item.audioUrl}" type="audio/wav">
+                                        </audio>
+                                    </div>
+                                ` : ''}
+                        ${(item.audioUrl2 && item.audioUrl2 !== item.audioUrl) ? `
+                                    <div class="mb-2">
+                                        <p class="text-xs text-gray-500 mono truncate mb-1">${item.audioName2 || ''}</p>
+                                        <audio controls class="w-full mb-2" style="height: 32px;">
+                                            <source src="${item.audioUrl2}" type="audio/wav">
+                                        </audio>
+                                    </div>
+                                ` : ''}
                         <div class="flex justify-between text-xs text-gray-500 mono">
                             <span><i class="fas fa-clock mr-1"></i>${item.time}s</span>
                             <span><i class="fas fa-history mr-1"></i>${item.timestamp}</span>
