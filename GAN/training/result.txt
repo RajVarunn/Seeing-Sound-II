@@ -1,0 +1,216 @@
+VERSION 2
+
+Epoch 1 Summary:
+  D Loss: 0.6912 (trained on 24/47 batches)
+  G Loss: 10.2678
+  Contrastive Loss: 2.3046
+  MSE Loss: 0.3603
+  Perceptual Loss: 4.8919
+Epoch 50 Summary:
+  D Loss: 0.6931 (trained on 24/47 batches)
+  G Loss: 3.2736
+  Contrastive Loss: 0.0262
+  MSE Loss: 0.0848
+  Perceptual Loss: 4.3298
+Epoch 100 Summary:
+  D Loss: 0.6931 (trained on 24/47 batches)
+  G Loss: 2.9065
+  Contrastive Loss: 0.0117
+  MSE Loss: 0.0453
+  Perceptual Loss: 3.6655
+Epoch 150 Summary:
+  D Loss: 0.6930 (trained on 24/47 batches)
+  G Loss: 2.8290
+  Contrastive Loss: 0.0101
+  MSE Loss: 0.0374
+  Perceptual Loss: 3.5206
+
+VERSION 3
+
+Epoch 1 Summary:
+  D Loss: 0.6816 (trained on 24/47 batches)
+  G Loss: 8.6174
+  Contrastive Loss: 2.2807
+  MSE Loss: 0.3769
+  Perceptual Loss: 2.7633
+Epoch 50 Summary:
+  D Loss: 0.6924 (trained on 24/47 batches)
+  G Loss: 1.7913
+  Contrastive Loss: 0.0295
+  MSE Loss: 0.0773
+  Perceptual Loss: 2.1454
+Epoch 100 Summary:
+  D Loss: 0.6929 (trained on 24/47 batches)
+  G Loss: 1.6159
+  Contrastive Loss: 0.0114
+  MSE Loss: 0.0396
+  Perceptual Loss: 1.7490
+Epoch 150 Summary:
+  D Loss: 0.6928 (trained on 24/47 batches)
+  G Loss: 1.5517
+  Contrastive Loss: 0.0114
+  MSE Loss: 0.0274
+  Perceptual Loss: 1.5758
+
+VERSION 4
+
+Epoch 1 Summary:
+  D Loss: 0.6940 (trained on 24/47 batches)
+  G Loss: 8.7497
+  Contrastive Loss: 2.2802
+  MSE Loss: 0.3940
+  Perceptual Loss: 2.9725
+  TV Loss: 0.6069
+Epoch 50 Summary:
+  D Loss: 0.6930 (trained on 24/47 batches)
+  G Loss: 2.2613
+  Contrastive Loss: 0.0255
+  MSE Loss: 0.0750
+  Perceptual Loss: 2.1390
+  TV Loss: 0.1912
+Epoch 100 Summary:
+  D Loss: 0.6932 (trained on 24/47 batches)
+  G Loss: 2.1284
+  Contrastive Loss: 0.0129
+  MSE Loss: 0.0372
+  Perceptual Loss: 1.7249
+  TV Loss: 0.1731
+Epoch 150 Summary:
+  D Loss: 0.6930 (trained on 24/47 batches)
+  G Loss: 2.0702
+  Contrastive Loss: 0.0088
+  MSE Loss: 0.0253
+  Perceptual Loss: 1.5092
+  TV Loss: 0.1675
+Epoch 250 Summary:
+  D Loss: 0.6931
+  G Loss: 2.0292
+  Contrastive Loss: 0.0063
+  MSE Loss: 0.0187
+  Perceptual Loss: 1.3555
+  TV Loss: 0.1563
+VERSION 5
+
+Epoch 1 Summary:
+  D Loss: 0.6446 (trained on 47/94 batches)
+  G Loss: 6.0855
+  Contrastive Loss: 1.5445
+  MSE Loss: 0.3363
+  Perceptual Loss: 2.3874
+  TV Loss: 0.4440
+Epoch 50 Summary:
+  D Loss: 0.6933 (trained on 47/94 batches)
+  G Loss: 1.9055
+  Contrastive Loss: 0.0258
+  MSE Loss: 0.1088
+  Perceptual Loss: 1.8948
+  TV Loss: 0.1721
+Epoch 100 Summary:
+  D Loss: 0.6911 (trained on 47/94 batches)
+  G Loss: 1.8231
+  Contrastive Loss: 0.0173
+  MSE Loss: 0.0647
+  Perceptual Loss: 1.7129
+  TV Loss: 0.1661
+Epoch 150 Summary:
+  D Loss: 0.6850 (trained on 47/94 batches)
+  G Loss: 1.8241
+  Contrastive Loss: 0.0130
+  MSE Loss: 0.0528
+  Perceptual Loss: 1.6658
+  TV Loss: 0.1693
+Epoch 200 Summary:
+  D Loss: 0.6871 (trained on 47/94 batches)
+  G Loss: 2.0556
+  Contrastive Loss: 0.0104
+  MSE Loss: 0.0439
+  Perceptual Loss: 1.5868
+  TV Loss: 0.1608
+Epoch 400 Summary:
+  D Loss: 0.6896
+  G Loss: 2.0165
+  Contrastive Loss: 0.0103
+  MSE Loss: 0.0354
+  Perceptual Loss: 1.5086
+
+VERSION 6
+
+Epoch 1 Summary:
+  D Loss: 0.6414 (trained on 47/94 batches)
+  G Loss: 6.1651
+  Contrastive Loss: 1.5281
+  MSE Loss: 0.3654
+  Perceptual Loss: 2.5222
+  TV Loss: 0.5027
+Epoch 50 Summary:
+  D Loss: 0.6949 (trained on 47/94 batches)
+  G Loss: 2.0178
+  Contrastive Loss: 0.0317
+  MSE Loss: 0.2021
+  Perceptual Loss: 1.9026
+  TV Loss: 0.1531
+Epoch 100 Summary:
+  D Loss: 0.6927 (trained on 47/94 batches)
+  G Loss: 1.9333
+  Contrastive Loss: 0.0195
+  MSE Loss: 0.1585
+  Perceptual Loss: 1.8097
+  TV Loss: 0.1557
+Epoch 150 Summary:
+  D Loss: 0.6924 (trained on 47/94 batches)
+  G Loss: 1.9254
+  Contrastive Loss: 0.0150
+  MSE Loss: 0.1499
+  Perceptual Loss: 1.8272
+  TV Loss: 0.1550
+Epoch 200 Summary:
+  D Loss: 0.6924 (trained on 47/94 batches)
+  G Loss: 2.1665
+  Contrastive Loss: 0.0117
+  MSE Loss: 0.1458
+  Perceptual Loss: 1.7825
+  TV Loss: 0.1466
+
+VERSION 7
+
+Epoch 1 Summary:
+  D Loss: 0.6799 (trained on 24/47 batches)
+  G Loss: 8.7744
+  Contrastive Loss: 2.2861
+  MSE Loss: 0.3722
+  Perceptual Loss: 3.2007
+  TV Loss: 0.6388
+Epoch 50 Summary:
+  D Loss: 0.6933 (trained on 24/47 batches)
+  G Loss: 2.2705
+  Contrastive Loss: 0.0295
+  MSE Loss: 0.0780
+  Perceptual Loss: 2.1496
+  TV Loss: 0.1952
+Epoch 100 Summary:
+  D Loss: 0.6930 (trained on 24/47 batches)
+  G Loss: 2.1369
+  Contrastive Loss: 0.0123
+  MSE Loss: 0.0404
+  Perceptual Loss: 1.7569
+  TV Loss: 0.1753
+Epoch 150 Summary:
+  D Loss: 0.6930 (trained on 24/47 batches)
+  G Loss: 2.2132
+  Contrastive Loss: 0.0088
+  MSE Loss: 0.0280
+  Perceptual Loss: 1.5709
+  TV Loss: 0.1711
+Epoch 200 Summary:
+  D Loss: 0.6930 (trained on 24/47 batches)
+  G Loss: 2.1826
+  Contrastive Loss: 0.0066
+  MSE Loss: 0.0216
+  Perceptual Loss: 1.4174
+  TV Loss: 0.1645
+Epoch 300 Summary:
+  D Loss: 0.6930
+  G Loss: 2.1650
+  Contrastive Loss: 0.0060
+  MSE Loss: 0.0182
+  Perceptual Loss: 1.3352
