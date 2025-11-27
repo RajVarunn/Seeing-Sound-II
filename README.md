@@ -6,7 +6,6 @@ This project explores how artificial intelligence can learn to "imagine" visuals
 
 By combining techniques in scale consistency, fine-grained and broad multimodal mapping, our findings highlight the feasibility of multisensory generative systems and provide a solid foundation for future work such as embedding audio inside images for compact storage, generating visual equivalents of sound for the deaf or hard-of-hearing, and multimodal search. This approach brings us closer to AI capable of richer, more human-like sensory integration.
 
-
 ## Stable Diffusion (Dual Head)
 
 ### How It Works
@@ -22,35 +21,40 @@ This enables multi-task training with three losses:
 2. **MSE loss** for SD embedding alignment
 3. **Diffusion loss** for pixel-level image generation (optional, if fine-tuning UNet)
 
-### Model Architecture
+#### Model Architecture
 
-**1. Audio Embedding**  
+**1. Audio Embedding**
 Raw audio is encoded using the CLAP audio encoder:
+
 $$
 a = \text{CLAP}_\text{audio}(x_\text{audio})
 $$
 
-**2. Dual-Head MLP Projection**  
+**2. Dual-Head MLP Projection**
 The audio embedding $a$ is projected into two spaces:
+
 $$
 z_\text{CLAP}, z_\text{SD} = \text{MLP}_\text{dual}(a)
 $$
+
 where:
 - $z_\text{CLAP}$: projected to CLAP text space
 - $z_\text{SD}$: projected to SD text embedding space
 
-**3. Target Embeddings**  
+**3. Target Embeddings**
 Text captions are encoded using:
 - CLAP text encoder: $t_\text{CLAP} = \text{CLAP}_\text{text}(x_\text{caption})$
 - SD text encoder: $t_\text{SD} = \text{SD}_\text{text}(x_\text{caption})$
 
 **4. Loss Functions**
 
-a. InfoNCE Loss (CLAP Alignment)  
+**a. InfoNCE Loss (CLAP Alignment)**
 Measures similarity between $z_\text{CLAP}$ and $t_\text{CLAP}$:
+
 $$
 \mathcal{L}_\text{CLAP} = \text{InfoNCE}(z_\text{CLAP}, t_\text{CLAP}, T)
 $$
+
 where $T$ is the temperature parameter.
 
 In code:
@@ -61,33 +65,38 @@ tgt = torch.arange(a.size(0), device=a.device)
 loss_CLAP = 0.5 * (F.cross_entropy(logits, tgt) + F.cross_entropy(logits.t(), tgt))
 ```
 
-b. MSE Loss (SD Embedding Alignment)  
+**b. MSE Loss (SD Embedding Alignment)**
 Measures L2 distance between $z_\text{SD}$ and $t_\text{SD}$:
+
 $$
 \mathcal{L}_\text{SD} = \| z_\text{SD} - t_\text{SD} \|^2
 $$
 
-c. Diffusion Loss (Optional, if fine-tuning UNet)  
+**c. Diffusion Loss (Optional, if fine-tuning UNet)**
 Trains SD UNet to denoise images conditioned on audio:
+
 $$
 \mathcal{L}_\text{diff} = \text{MSE}(\text{UNet}(L_\text{noisy}, t_\text{audio}), \epsilon)
 $$
+
 where $L_\text{noisy}$ is the noisy latent, $t_\text{audio}$ is the audio conditioning, and $\epsilon$ is the true noise.
 
-**5. Total Loss**  
+**5. Total Loss**
 The total multi-task loss is:
+
 $$
 \mathcal{L}_\text{total} = w_1 \mathcal{L}_\text{CLAP} + w_2 \mathcal{L}_\text{SD} + w_3 \mathcal{L}_\text{diff}
 $$
+
 where $w_1$, $w_2$, $w_3$ are configurable weights.
 
-**6. Inference**  
+**6. Inference**
 For generation, only the SD head is used:
 - Project audio to $z_\text{SD}$
 - Insert $z_\text{SD}$ as a soft token in the SD text embedding sequence
 - Generate image using Stable Diffusion pipeline
 
-**Summary:**  
+**Summary:**
 The dual-head MLP enables the model to learn both semantic and generative mappings from audio to image, optimizing for both CLAP and SD spaces. Multi-task loss ensures robust training, and the architecture supports both evaluation and creative fusion modes.
 
 
@@ -125,7 +134,6 @@ The dual-head MLP enables the model to learn both semantic and generative mappin
 - `unet_training_loss_curves.png`: Image generated from `plot_unet_training_loss.py`.
 
 ## Stable Diffusion (Single Head)
-
 
 ### Project File & Folder Overview 
 
