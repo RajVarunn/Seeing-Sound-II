@@ -135,13 +135,18 @@ The dual-head MLP enables the model to learn both semantic and generative mappin
 
 ## Stable Diffusion (Single Head)
 
+### How It Works
+
+#### Model Architecture
+
 ### Project File & Folder Overview 
+
 
 ## GANs
 
 The GANs implementation uses a **Conditional Wasserstein GAN with Gradient Penalty (WGAN-GP)** to generate 64x64 pixel images conditioned on audio embeddings. It leverages **SPADE (Spatially-Adaptive Normalization)** in the generator and a **Projection Discriminator** to effectively fuse audio information into the visual generation process.
 
-## How It Works
+### How It Works
 
 The model consists of two main components: a **Generator** and a **Discriminator**, which play a minimax game.
 
@@ -150,9 +155,9 @@ The model consists of two main components: a **Generator** and a **Discriminator
 
 The training process uses the **WGAN-GP** objective for stability, augmented with **Feature Matching Loss** and an optional **LPIPS Perceptual Loss** to improve image quality and diversity.
 
-## Model Architecture
+#### Model Architecture
 
-### Generator
+##### Generator
 The generator uses a ResNet-based architecture with **SPADE** normalization blocks.
 - **Input:** Noise vector $z \in \mathbb{R}^{128}$, Audio Embedding $e \in \mathbb{R}^{512}$.
 - **SPADE Block:** Instead of standard Batch Normalization, SPADE modulates the normalized activation using learned scale ($\gamma$) and bias ($\beta$) parameters derived from the audio embedding.
@@ -163,7 +168,7 @@ $$ \text{SPADE}(x, e) = \frac{x - \mu}{\sigma} \cdot (1 + \gamma(e)) + \beta(e) 
 
 - **Self-Attention:** Applied at 32x32 and 64x64 resolutions to capture long-range dependencies.
 
-### Discriminator
+##### Discriminator
 The discriminator is a **Projection Discriminator** with **Spectral Normalization**.
 - **Architecture:** A series of downsampling convolutional blocks with Spectral Normalization.
 - **Projection:** The final score is a combination of a global realism score and a conditional compatibility score (dot product of image features and projected audio embedding).
@@ -171,16 +176,16 @@ The discriminator is a **Projection Discriminator** with **Spectral Normalizatio
 $$ D(x, e) = \underbrace{\psi(x)^T \phi(e)}_{\text{Conditional Score}} + \underbrace{\psi'(x)}_{\text{Realism Score}} $$
 where $\psi(x)$ are the image features and $\phi(e)$ is the projected audio embedding.
 
-## Loss Functions
+#### Loss Functions
 
 The model is trained using the following losses:
 
-### 1. WGAN-GP Loss (Discriminator)
+##### 1. WGAN-GP Loss (Discriminator)
 Ensures 1-Lipschitz continuity for the critic using a gradient penalty.
 
 $$ L_D = \underbrace{\mathbb{E}_{\tilde{x} \sim P_g}[D(\tilde{x}, e)] - \mathbb{E}_{x \sim P_r}[D(x, e)]}_{\text{Wasserstein Loss}} + \lambda_{gp} \underbrace{\mathbb{E}_{\hat{x} \sim P_{\hat{x}}}[(||\nabla_{\hat{x}} D(\hat{x}, e)||_2 - 1)^2]}_{\text{Gradient Penalty}} $$
 
-### 2. Generator Loss
+##### 2. Generator Loss
 Combines adversarial loss with feature matching and perceptual loss.
 
 $$ L_G = \underbrace{-\mathbb{E}_{\tilde{x} \sim P_g}[D(\tilde{x}, e)]}_{\text{Adversarial Loss}} + \lambda_{fm} L_{fm} + \lambda_{lpips} L_{lpips} $$
@@ -189,7 +194,7 @@ $$ L_G = \underbrace{-\mathbb{E}_{\tilde{x} \sim P_g}[D(\tilde{x}, e)]}_{\text{A
   $$ L_{fm} = ||D_{feat}(x) - D_{feat}(\tilde{x})||_1 $$
 - **LPIPS ($L_{lpips}$):** (Optional) Perceptual loss using a pre-trained VGG network to ensure the generated image is perceptually similar to the target (if paired data is used/available in that context).
 
-## Training
+#### Training
 
 The training loop is implemented in `trainer.py` and can be executed via the `train.ipynb` notebook.
 
@@ -197,7 +202,7 @@ The training loop is implemented in `trainer.py` and can be executed via the `tr
 - **EMA:** Exponential Moving Average of generator weights is maintained for inference to produce higher quality samples.
 - **n_critic:** The discriminator is updated 4 times for every generator update.
 
-## Training Progress
+#### Training Progress
 
 Below is a visualization of the training progress over time:
 
