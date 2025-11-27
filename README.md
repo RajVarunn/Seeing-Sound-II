@@ -271,11 +271,46 @@ where:
 ## Stable Diffusion (Single Head - CLIP)
 
 ### How It Works
+This single-head approach implements a two-stage training pipeline designed to enable Stable Diffusion to interpret audio cues by aligning audio embeddings with text semantics:
+1. **MLP Alignment (Supervised)**: A lightweight MLP adapter (Linear → GELU → Linear) is trained to map frozen CLAP audio embeddings directly into the CLIP text latent space. Unlike standard regression, this uses **Cosine Similarity Loss** to force the projected audio vector to align directionally with ground-truth text embeddings, treating text as the semantic target.
+2. **End-to-End Fine-Tuning**: The pre-trained adapter is chained into the Stable Diffusion UNet for full fine-tuning using **Hybrid Conditioning** (fusing audio and text embeddings). To prevent model collapse, we utilize **Differential Learning Rates** (microscopic for UNet, higher for Adapter), **bfloat16** precision, and **Classifier-Free Guidance (CFG)** dropout.
+3. **Inference**: Input audio is encoded via CLAP and projected through the fine-tuned adapter. This projection is combined with text prompts to condition the Stable Diffusion UNet (using the **Euler Ancestral** scheduler), generating images that reflect the semantic content of the audio.
+4. **Evaluation**: The model's performance is benchmarked on unseen audio samples using **CLIP Semantic Similarity**. We calculate the cosine similarity between the generated image and the original text caption to objectively measure the translation of audio signals into visual concepts.
 
 ### Model Architecture
+#### MLP Adapter
+The MLP adapter acts as a semantic bridge, translating CLAP audio embeddings into the CLIP text embedding space used by Stable Diffusion.
+- **Input**: CLAP Audio Embedding $e \in \mathbb{R}^{512}$
+- **Architecture**: A feedforward network consisting of an alignment adapter followed by a projection layer.
+- **Layers**: $512 \rightarrow 1024 \rightarrow 512 \rightarrow 768$
+- **Activation**: GELU (Gaussian Error Linear Unit)
+- **Loss**: Cosine Similarity Loss ($1 - \text{CosineSim}$) used directly for optimization to enforce directional alignment between projected audio and target text embeddings.
+
+$$e_{cond} = W_{proj} \cdot (W_2 \cdot \text{GELU}(W_1 \cdot e + b_1) + b_2) + b_{proj}$$
+
+#### Stable Diffusion Fine-Tuning
+Unlike standard LoRA approaches, this architecture employs full fine-tuning of the U-Net to deeply integrate audio conditioning.
+- **Backbone**: Stable Diffusion v1.5 U-Net
+- **Conditioning Strategy**: Hybrid Fusion (Averaging Audio + Text Embeddings)
+- **Optimization**: Differential Learning Rates (Adapter: $1e^{-6}$, U-Net: $5e^{-9}$) using **bfloat16** precision to prevent numerical instability.
 
 ### Loss Functions
+The pipeline uses contrastive optimization strategies for both stages to ensure semantic alignment:
 
+#### 1. MLP Alignment Loss (Stage 1)
+Instead of Mean Squared Error (MSE), we utilized **Cosine Similarity Loss** to train the adapter. This forces the projected audio vector to align with the direction of the ground-truth text embedding in the CLIP latent space, focusing on semantic orientation rather than magnitude.
+
+$$L_{Align} = 1 - \text{CosineSim}(\underbrace{\text{MLP}(e_{audio})}_{\text{Projected Audio}}, \underbrace{e_{text}}_{\text{Target CLIP Text}})$$
+
+#### 2. Fine-Tuning Semantic Loss (Stage 2)
+For end-to-end fine-tuning, we replaced the standard noise-prediction loss with a **CLIP Semantic Loss**. The model generates a denoised image estimate $I_{gen}$, which is then encoded by CLIP and compared against the original text caption. This directly optimizes the model to generate images that match the semantic meaning of the audio-derived prompt.
+
+$$L_{Semantic} = 1 - \text{CosineSim}(\underbrace{E_{img}(I_{gen})}_{\text{Generated Image Feature}}, \underbrace{E_{txt}(y)}_{\text{Prompt Feature}})$$
+
+where:
+- $I_{gen}$ is the predicted original image decoded from latents
+- $E_{img}$ and $E_{txt}$ are the frozen CLIP Image and Text encoders
+- $y$ is the text prompt associated with the audio
 
 ## GANs
 
