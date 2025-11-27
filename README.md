@@ -9,6 +9,88 @@ By combining techniques in scale consistency, fine-grained and broad multimodal 
 
 ## Stable Diffusion (Dual Head)
 
+### How It Works
+
+The Stable Diffusion double-head approach uses a dual-head MLP adapter to project audio features into two distinct embedding spaces: one for CLAP text and one for Stable Diffusion (SD) text. This enables multi-task training, where the model learns both semantic alignment (InfoNCE loss with CLAP) and embedding compatibility (MSE loss with SD). During training, the model optimizes both heads simultaneously, allowing it to generate images from audio that are semantically meaningful and compatible with the SD generative process. U-Net optimization can be added to further fine-tune the image generation process, but the dual-head MLP is the core innovation that enables flexible, multi-modal mapping from audio to image.
+
+The model uses a dual-head MLP to project CLAP audio embeddings into two spaces:
+- **CLAP text space** (for semantic alignment)
+- **Stable Diffusion (SD) text embedding space** (for image generation)
+
+This enables multi-task training with three losses:
+1. **InfoNCE loss** for CLAP alignment
+2. **MSE loss** for SD embedding alignment
+3. **Diffusion loss** for pixel-level image generation (optional, if fine-tuning UNet)
+
+### Model Architecture
+
+**1. Audio Embedding**  
+Raw audio is encoded using the CLAP audio encoder:
+$$
+a = \text{CLAP}_\text{audio}(x_\text{audio})
+$$
+
+**2. Dual-Head MLP Projection**  
+The audio embedding $a$ is projected into two spaces:
+$$
+z_\text{CLAP}, z_\text{SD} = \text{MLP}_\text{dual}(a)
+$$
+where:
+- $z_\text{CLAP}$: projected to CLAP text space
+- $z_\text{SD}$: projected to SD text embedding space
+
+**3. Target Embeddings**  
+Text captions are encoded using:
+- CLAP text encoder: $t_\text{CLAP} = \text{CLAP}_\text{text}(x_\text{caption})$
+- SD text encoder: $t_\text{SD} = \text{SD}_\text{text}(x_\text{caption})$
+
+**4. Loss Functions**
+
+a. InfoNCE Loss (CLAP Alignment)  
+Measures similarity between $z_\text{CLAP}$ and $t_\text{CLAP}$:
+$$
+\mathcal{L}_\text{CLAP} = \text{InfoNCE}(z_\text{CLAP}, t_\text{CLAP}, T)
+$$
+where $T$ is the temperature parameter.
+
+In code:
+```python
+a, b = F.normalize(z_CLAP, dim=-1), F.normalize(t_CLAP, dim=-1)
+logits = a @ b.t() / temp
+tgt = torch.arange(a.size(0), device=a.device)
+loss_CLAP = 0.5 * (F.cross_entropy(logits, tgt) + F.cross_entropy(logits.t(), tgt))
+```
+
+b. MSE Loss (SD Embedding Alignment)  
+Measures L2 distance between $z_\text{SD}$ and $t_\text{SD}$:
+$$
+\mathcal{L}_\text{SD} = \| z_\text{SD} - t_\text{SD} \|^2
+$$
+
+c. Diffusion Loss (Optional, if fine-tuning UNet)  
+Trains SD UNet to denoise images conditioned on audio:
+$$
+\mathcal{L}_\text{diff} = \text{MSE}(\text{UNet}(L_\text{noisy}, t_\text{audio}), \epsilon)
+$$
+where $L_\text{noisy}$ is the noisy latent, $t_\text{audio}$ is the audio conditioning, and $\epsilon$ is the true noise.
+
+**5. Total Loss**  
+The total multi-task loss is:
+$$
+\mathcal{L}_\text{total} = w_1 \mathcal{L}_\text{CLAP} + w_2 \mathcal{L}_\text{SD} + w_3 \mathcal{L}_\text{diff}
+$$
+where $w_1$, $w_2$, $w_3$ are configurable weights.
+
+**6. Inference**  
+For generation, only the SD head is used:
+- Project audio to $z_\text{SD}$
+- Insert $z_\text{SD}$ as a soft token in the SD text embedding sequence
+- Generate image using Stable Diffusion pipeline
+
+**Summary:**  
+The dual-head MLP enables the model to learn both semantic and generative mappings from audio to image, optimizing for both CLAP and SD spaces. Multi-task loss ensures robust training, and the architecture supports both evaluation and creative fusion modes.
+
+
 ### Project File & Folder Overview 
 - **hf_model_hub**
 	- `audio2image_mapper_dual_best.pt`: Holds the best model trained using MLP dual mapper + Unet Optimization.
@@ -43,6 +125,7 @@ By combining techniques in scale consistency, fine-grained and broad multimodal 
 - `unet_training_loss_curves.png`: Image generated from `plot_unet_training_loss.py`.
 
 ## Stable Diffusion (Single Head)
+
 
 ### Project File & Folder Overview 
 
@@ -111,4 +194,6 @@ The training loop is implemented in `trainer.py` and can be executed via the `tr
 Below is a visualization of the training progress over time:
 
 ![Training Progress](training_progress.gif)
+
+### Project File & Folder Overview 
 
