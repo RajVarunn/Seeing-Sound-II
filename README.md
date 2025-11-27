@@ -198,13 +198,83 @@ The dual-head MLP enables the model to learn both semantic and generative mappin
 - `training_loss_curves.png`: Image generated from `plot_training_loss.py`.
 - `unet_training_loss_curves.png`: Image generated from `plot_unet_training_loss.py`.
 
-## Stable Diffusion (Single Head)
+## Stable Diffusion (Single Head - SD Text Encoder & LoRA Fine Tuning)
 
 ### How It Works
 
-#### Model Architecture
+This single-head approach implements a 4-phase audio-to-image generation pipeline using CLAP embeddings, MLP adaptation, and LoRA fine-tuning:
+
+1. **MLP Training**: A 3-layer MLP (512→1024→1024→768) learns to map CLAP audio embeddings to Stable Diffusion's text embedding space using MSE (L2) loss to directly regress towards SD text encoder targets. Cosine similarity is computed during training only for monitoring and reporting, not as the optimization objective.
+2. **LoRA Fine-tuning**: Stable Diffusion's U-Net is fine-tuned using LoRA (rank=16, alpha=16) on bird-specific audio-image pairs to improve domain-specific generation quality.
+3. **Inference**: Input audio is encoded via CLAP, projected through the trained MLP adapter, then used to condition Stable Diffusion (with LoRA weights) for image generation.
+4. **Evaluation**: Generated images are evaluated against text descriptions using CLIP similarity scores to measure performance improvements from LoRA fine-tuning.
+
+### Model Architecture
+
+#### MLP Adapter
+The MLP adapter bridges CLAP audio embeddings to Stable Diffusion's text embedding space.
+- **Input:** CLAP Audio Embedding $e \in \mathbb{R}^{512}$
+- **Architecture:** Three-layer feedforward network with ReLU activations and dropout
+- **Layers:** $512 \rightarrow 1024 \rightarrow 1024 \rightarrow 768$
+- **Loss:** Mean squared error (MSE / L2) between projected audio embeddings and target SD text embeddings. (Cosine similarity is logged for monitoring but was not used as the training loss.)
+
+$$ \text{MLP}(e) = W_3 \cdot \text{ReLU}(W_2 \cdot \text{ReLU}(W_1 \cdot e + b_1) + b_2) + b_3 $$
+
+#### LoRA Fine-tuning
+Low-Rank Adaptation modifies Stable Diffusion's U-Net attention layers for domain specialization.
+- **Target Modules:** Query, Key, Value, and Output projections in attention blocks
+- **Configuration:** Rank $r=16$, Alpha $\alpha=16$, Dropout $p=0.1$
+- **Adaptation:** $W = W_0 + \frac{\alpha}{r} \cdot A \cdot B$ where $A \in \mathbb{R}^{d \times r}$, $B \in \mathbb{R}^{r \times k}$
+
+$$ \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{(Q + \Delta Q)(K + \Delta K)^T}{\sqrt{d_k}}\right)(V + \Delta V) $$
+
+### Loss Functions
+
+The model is trained using the following losses:
+
+#### 1. MLP Training Loss
+Mean squared error between projected audio embeddings and target SD text embeddings.
+
+$$ L_{MLP} = \frac{1}{N} \sum_{i=1}^{N} ||\underbrace{\text{MLP}(e_i)}_{\text{Projected Audio}} - \underbrace{t_{SD,i}}_{\text{Target SD Embedding}}||_2^2 $$
+
+where $e_i$ is the CLAP audio embedding and $t_{SD,i}$ is the corresponding SD text embedding.
+
+#### 2. LoRA Fine-tuning Loss
+Standard diffusion loss for training the U-Net with LoRA adapters.
+
+$$ L_{LoRA} = \mathbb{E}_{x_0, \epsilon \sim \mathcal{N}(0,I), t} \left[ ||\underbrace{\epsilon}_{\text{True Noise}} - \underbrace{\epsilon_{\theta}(\sqrt{\bar{\alpha}_t}x_0 + \sqrt{1-\bar{\alpha}_t}\epsilon, t, c)}_{\text{Predicted Noise}}||_2^2 \right] $$
+
+where:
+- $x_0$ is the ground truth image
+- $\epsilon$ is the noise added at timestep $t$
+- $c$ is the conditioning (projected audio embedding)
+- $\epsilon_{\theta}$ is the U-Net with LoRA adapters
 
 ### Project File & Folder Overview 
+- **bird_specialist_lora.safetensors/**
+    - `adapter_config.json`: LoRA adapter configuration file specifying target modules, rank, alpha, and other hyperparameters.
+    - `adapter_model.safetensors`: Trained LoRA weights for bird-specialized Stable Diffusion fine-tuning.
+    - `README.md`: Model card documentation for the LoRA adapter with training details and usage instructions.
+
+- `bird_filter.py`: Script to filter the main dataset for bird-related audio samples and verify file existence.
+- `bird_sounds_filtered.csv`: Filtered dataset containing only bird-related audio-image pairs (421 entries).
+- `diva_model.ipynb`: Complete training pipeline notebook implementing MLP training, LoRA fine-tuning, inference, and CLIP evaluation.
+- `MLP.pth`: Trained MLP adapter model for mapping CLAP audio embeddings to Stable Diffusion text embedding space.
+
+- `bird_lora_loss_curve.png`: Training loss visualization for the bird-specialized LoRA fine-tuning process.
+- `comparison_frozen_vs_lora.png`: Side-by-side comparison of generated images before and after LoRA fine-tuning.
+- `evaluation_with_clip_scores.png`: CLIP score evaluation results comparing model performance before and after fine-tuning.
+- `mlp_training.png`: Training progress visualization for the MLP adapter training phase.
+
+
+
+## Stable Diffusion (Single Head - CLIP)
+
+### How It Works
+
+### Model Architecture
+
+### Loss Functions
 
 
 ## GANs
