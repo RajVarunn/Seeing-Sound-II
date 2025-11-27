@@ -70,6 +70,9 @@ Finally, duplicates are removed, and the dataset is saved to `main_dataV1.csv`.
 2.  Ensure `vggsound.csv` is available and the path is correctly set.
 3.  Run the cells in `data_prep.ipynb` sequentially.
 
+## Model Files
+
+The model files used in this project are accessible here: https://drive.google.com/drive/folders/1rGY-ddTV85Alp3vol1xfeEz63A7Alxqx?usp=sharing
 
 ## Stable Diffusion (Dual Head)
 
