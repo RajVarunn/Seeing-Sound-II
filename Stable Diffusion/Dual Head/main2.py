@@ -525,7 +525,7 @@ class Audio2ImageModel(nn.Module):
         # Reshape for UNet: [batch, 1, hidden_dim]
         encoder_hidden_states = audio_to_sd.unsqueeze(1)
         
-        # 5. UNet predicts noise (THIS IS WHERE SD LEARNS! ✅)
+        # 5. UNet predicts noise
         noise_pred = self.sd_unet(
             noisy_latents,              # Noisy input
             timesteps,                   # Time conditioning
@@ -533,7 +533,7 @@ class Audio2ImageModel(nn.Module):
         ).sample
         
         # 6. Compute denoising loss
-        # Gradients flow back to: UNet ✅ and Mapper ✅
+        # Gradients flow back to: UNet and Mapper
         loss = F.mse_loss(noise_pred, noise, reduction='mean')
         
         return loss

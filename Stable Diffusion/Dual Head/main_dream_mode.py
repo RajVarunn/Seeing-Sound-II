@@ -160,7 +160,7 @@ class DreamFusionModel(Audio2ImageModel):
             enc[0, last_token_pos + 1:last_token_pos + 2, :] = fused
         
         # Generate fusion image
-        print(f"🎨 Generating fusion image:")
+        print(f"Generating fusion image:")
         if concept1 and concept2:
             print(f"   Audio 1: '{concept1}'")
             print(f"   Audio 2: '{concept2}'")
@@ -227,7 +227,7 @@ def infer_fusion(
     cfg.blend_ratio = blend_ratio
     
     # Load first audio
-    print(f"\n📻 Loading audio 1: {wav_path1}")
+    print(f"\nLoading audio 1: {wav_path1}")
     wav1, sr1 = torchaudio.load(wav_path1)
     if wav1.size(0) > 1:
         wav1 = wav1.mean(0, keepdim=True)
@@ -241,7 +241,7 @@ def infer_fusion(
     wav1 = wav1.to(cfg.device)
     
     # Load second audio
-    print(f"📻 Loading audio 2: {wav_path2}")
+    print(f"Loading audio 2: {wav_path2}")
     wav2, sr2 = torchaudio.load(wav_path2)
     if wav2.size(0) > 1:
         wav2 = wav2.mean(0, keepdim=True)
@@ -258,12 +258,12 @@ def infer_fusion(
     model = load_dream_model(cfg)
     
     # Generate fusion image
-    print("\n🌀 Generating fusion image...")
+    print("\nGenerating fusion image...")
     img = model.generate_fusion(wav1, sr1, wav2, sr2, concept1, concept2)
     
     # Save
     img.save(out_path)
-    print(f"✅ Fusion image saved to {out_path}")
+    print(f"Fusion image saved to {out_path}")
     print(f"   Mode: {fusion_mode}, Ratio: {blend_ratio:.2f}")
 
 
@@ -301,7 +301,7 @@ if __name__ == "__main__":
     cfg.ckpt_path = args.checkpoint
     
     print("="*70)
-    print("🌙 DREAM FUSION MODE")
+    print("DREAM FUSION MODE")
     print("="*70)
     print(f"Device: {cfg.device}")
     print(f"Audio 1: {args.audio1}")
@@ -322,4 +322,4 @@ if __name__ == "__main__":
         args.ratio
     )
     
-    print("\n🎉 Done! Try different fusion modes and ratios for varied results!")
+    print("\nDone! Try different fusion modes and ratios for varied results!")
