@@ -15,12 +15,12 @@ The model implements a **Conditional GAN (cGAN)** architecture regarding the Gen
 ### Audio Encoding
 
 Raw audio waveforms are processed by a frozen CLAP (Contrastive Language-Audio Pretraining) encoder to extract semantic audio features
-((e \in \mathbb{R}^{512})).
+e∈R512
 
 ### Projection & Concatenation
 
 These features are projected via an MLP to a higher dimension (2048) and concatenated with a random Gaussian noise vector
-((z \in \mathbb{R}^{128})), creating a combined latent vector.
+z∈R128 , creating a combined latent vector.
 
 ### Generation
 
@@ -68,20 +68,20 @@ The models leverage a comprehensive "cocktail" of loss functions.
 ### 1. Adversarial Loss (BCE)
 
 Standard binary cross-entropy loss. The Discriminator tries to classify real vs. fake, while the Generator tries to fool the Discriminator.
-
+$$
 [
 \mathcal{L}_{adv} = \mathbb{E}[\log D(x)] + \mathbb{E}[\log(1 - D(G(z, e)))]
 ]
-
+$$
 
 ### 2. Contrastive Loss (Alignment)
 
 Ensures the generated image is semantically similar to the input audio.
-
+$$
 [
 \mathcal{L}*{cont} = \text{CrossEntropy}(\text{logits}(e*{audio}, e_{img}))
 ]
-
+$$
 
 ### 3. Perceptual Loss (VGG)
 
@@ -99,17 +99,17 @@ Applied to the Discriminator during training to penalize rapid changes in gradie
 
 Introduced in v4. Penalizes high-frequency noise by minimizing differences between adjacent pixels.
 
+$$
 [
 \mathcal{L}*{TV} = \sum*{i,j} |x_{i+1,j} - x_{i,j}| + |x_{i,j+1} - x_{i,j}|
 ]
-
+$$
 ---
 
 ## File & Version Overview
 
 The development process is captured across six Jupyter Notebooks.
 
----
 
 ### **Baseline Phase**
 
@@ -154,13 +154,12 @@ The development process is captured across six Jupyter Notebooks.
 * Added: EMA for generator weights
 * Training: 400 Epochs
 
-#### **birdv7.ipynb — Final Optimized Model (128×128)**
+#### **birdv7.ipynb — Final Model (128×128)**
 
 * Architecture: Reverted to 128×128
 * Attention back to 16×16
 * Features: EMA + Augmentation
 * Training: 300 Epochs
-* Status: Most balanced and high-performing model
 
 ---
 
