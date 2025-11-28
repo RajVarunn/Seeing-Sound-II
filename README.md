@@ -382,6 +382,23 @@ Below is a visualization of the training progress over time:
 ![Training Progress](training_progress.gif)
 
 ### Project File & Folder Overview 
+---
+
+**bird_sounds_filtered.csv**: The curated dataset catalog containing file paths for aligned audio-image pairs specific to bird species, used to train the models.
+
+**birdv2.ipynb**: The baseline 128x128 Conditional GAN implementation which established the initial proof-of-concept using a single-layer perceptual loss.
+
+**birdv3.ipynb**: An iterated version that introduced a multi-layer (3-layer) VGG perceptual loss, significantly stabilizing the generator and preventing early mode collapse.
+
+**birdv4.ipynb**: Builds upon the stabilized model by adding Total Variation (TV) loss to specifically target and reduce high-frequency noise and checkerboard artifacts.
+
+**birdv5.ipynb**: An experimental high-resolution branch that scaled the architecture to output 256x256 images by adding extra upsampling and downsampling blocks.
+
+**birdv6.ipynb**: Improves the high-resolution model by implementing Data Augmentation and Exponential Moving Average (EMA) for generator weights to smooth inference results.
+
+**birdv7.ipynb**: The final model which reverts to 128x128 resolution while retaining EMA and augmentation, achieving the best balance between structural coherence and visual quality.
+
+---
 
 ## GAN Model Architecture (v7)
 
